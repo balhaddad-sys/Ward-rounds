@@ -939,12 +939,127 @@
     </div>
 
     <script>
+        // ==================================
+        // Configuration
+        // ==================================
+        const CONFIG = {
+            // Set to true to use real Google Apps Script endpoint
+            USE_REAL_API: false,
+
+            // Google Apps Script deployed web app URL
+            GAS_URL: 'https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec',
+
+            // Demo mode simulates responses
+            DEMO_MODE: true
+        };
+
+        // ==================================
+        // API Client
+        // ==================================
+        class APIClient {
+            constructor() {
+                this.token = localStorage.getItem('gas_token');
+            }
+
+            async callGAS(action, data = {}) {
+                if (!CONFIG.USE_REAL_API) {
+                    console.log('Demo mode - simulating API call:', action, data);
+                    return this.getMockResponse(action, data);
+                }
+
+                try {
+                    const response = await fetch(CONFIG.GAS_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action,
+                            token: this.token,
+                            ...data
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API request failed: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    console.error('API call failed:', error);
+                    throw error;
+                }
+            }
+
+            getMockResponse(action, data) {
+                // Simulate API responses for demo
+                const responses = {
+                    login: {
+                        success: true,
+                        user: {
+                            id: 'demo-user-id',
+                            username: data.username,
+                            createdAt: new Date()
+                        },
+                        token: 'demo-token-' + Date.now()
+                    },
+                    getPatients: {
+                        success: true,
+                        patients: [
+                            {
+                                id: '1',
+                                mrn: '123456',
+                                name: 'John Doe',
+                                age: 65,
+                                gender: 'M',
+                                chiefComplaint: 'Chest pain',
+                                admissionDate: new Date('2024-01-10'),
+                                status: 'stable'
+                            }
+                        ]
+                    },
+                    processDocument: {
+                        success: true,
+                        report: {
+                            id: 'report-' + Date.now(),
+                            type: 'lab',
+                            interpretation: {
+                                summary: 'Demo results - see tabs for details',
+                                findings: []
+                            },
+                            pearls: [],
+                            questions: []
+                        }
+                    }
+                };
+                return Promise.resolve(responses[action] || { success: false, error: 'Unknown action' });
+            }
+
+            setToken(token) {
+                this.token = token;
+                localStorage.setItem('gas_token', token);
+            }
+
+            clearToken() {
+                this.token = null;
+                localStorage.removeItem('gas_token');
+            }
+        }
+
+        const apiClient = new APIClient();
+
         // Initialize date
         document.addEventListener('DOMContentLoaded', function() {
             const dateEl = document.getElementById('currentDate');
             if (dateEl) {
                 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
                 dateEl.textContent = new Date().toLocaleDateString('en-US', options);
+            }
+
+            // Update demo badge if using real API
+            if (CONFIG.USE_REAL_API) {
+                document.querySelector('.demo-badge').textContent = '🔗 CONNECTED TO GAS';
+                document.querySelector('.demo-badge').style.background = 'rgba(16, 185, 129, 0.9)';
             }
         });
 
@@ -958,12 +1073,30 @@
         }
 
         // Login handler
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const username = document.getElementById('username').value;
-            if (username) {
-                localStorage.setItem('demo_user', username);
-                showView('dashboard');
+
+            if (!username) return;
+
+            try {
+                // Call API (or mock in demo mode)
+                const result = await apiClient.callGAS('login', { username });
+
+                if (result.success) {
+                    localStorage.setItem('demo_user', username);
+
+                    if (result.token) {
+                        apiClient.setToken(result.token);
+                    }
+
+                    showView('dashboard');
+                } else {
+                    alert('Login failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed. Check console for details.');
             }
         }
 
