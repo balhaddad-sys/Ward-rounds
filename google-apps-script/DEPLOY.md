@@ -154,9 +154,9 @@ You'll create 4 files in Google Apps Script:
    - Click "Allow"
 7. **Copy the Web App URL** - This is your app's address!
 
-**Your web app URL will look like:**
+**Your web app URL:**
 ```
-https://script.google.com/macros/s/AKfycbz.../exec
+https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec
 ```
 
 ---
@@ -305,7 +305,7 @@ To update the app after making changes:
 
 ## 🎯 **Quick Reference**
 
-**Web App URL**: (Your deployed URL)
+**Web App URL**: https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec
 **Apps Script Editor**: https://script.google.com
 **Database Sheet**: (Your Google Sheet URL)
 **OpenAI Dashboard**: https://platform.openai.com

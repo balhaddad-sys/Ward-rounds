@@ -34,6 +34,17 @@ google-apps-script/
 
 ---
 
+## 🌐 Live Deployment
+
+**Deployed Web App URL:**
+```
+https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec
+```
+
+> Access the live MedWard application directly at the URL above, or follow the deployment steps below to create your own instance.
+
+---
+
 ## 🚀 Quick Start (5 Minutes)
 
 ### **1. Get API Keys**
