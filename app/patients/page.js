@@ -25,45 +25,12 @@ export default function PatientsPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      // For now, use mock data. Replace with actual API call when available
-      const mockPatients = [
-        {
-          id: 1,
-          name: 'John Doe',
-          age: 45,
-          gender: 'M',
-          mrn: 'MRN001234',
-          chiefComplaint: 'Chest pain',
-          status: 'stable',
-          reportCount: 5,
-          admissionDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 2,
-          name: 'Jane Smith',
-          age: 62,
-          gender: 'F',
-          mrn: 'MRN005678',
-          chiefComplaint: 'Shortness of breath',
-          status: 'monitoring',
-          reportCount: 8,
-          admissionDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: 3,
-          name: 'Robert Johnson',
-          age: 38,
-          gender: 'M',
-          mrn: 'MRN009012',
-          chiefComplaint: 'Abdominal pain',
-          status: 'stable',
-          reportCount: 3,
-          admissionDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-      setPatients(mockPatients);
+      // Read patients from localStorage
+      const savedPatients = JSON.parse(localStorage.getItem('medward_patients') || '[]');
+      setPatients(savedPatients);
     } catch (error) {
       console.error('Error fetching patients:', error);
+      setPatients([]);
     } finally {
       setLoading(false);
     }
@@ -90,8 +57,10 @@ export default function PatientsPage() {
         admissionDate: new Date().toISOString()
       };
 
-      // Add to patients list (in real app, this would be an API call)
-      setPatients([newPatient, ...patients]);
+      // Save to localStorage
+      const updatedPatients = [newPatient, ...patients];
+      localStorage.setItem('medward_patients', JSON.stringify(updatedPatients));
+      setPatients(updatedPatients);
 
       // Reset form and close modal
       setFormData({

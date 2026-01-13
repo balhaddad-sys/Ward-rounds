@@ -24,6 +24,17 @@ export default function DashboardPage() {
     }
 
     setUser(JSON.parse(userData));
+
+    // Load real stats from localStorage
+    const reports = JSON.parse(localStorage.getItem('medward_reports') || '[]');
+    const patients = JSON.parse(localStorage.getItem('medward_patients') || '[]');
+
+    setStats({
+      patients: patients.length,
+      reports: reports.length,
+      presentations: 0, // To be implemented
+      pearls: 0 // To be implemented
+    });
   }, []);
 
   const handleLogout = () => {

@@ -14,23 +14,32 @@ export default function ScannerPage() {
     setUploadSuccess(false);
 
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('method', method);
+      // Since this is a static export, store report info in localStorage
+      // Get existing reports
+      const existingReports = JSON.parse(localStorage.getItem('medward_reports') || '[]');
 
-      // Upload to API
-      const response = await fetch('/api/reports/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      // Create new report entry
+      const newReport = {
+        id: Date.now(),
+        type: file.type.includes('pdf') ? 'Lab' : 'Imaging',
+        title: file.name,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        uploadMethod: method,
+        date: new Date().toISOString(),
+        status: 'pending',
+        patientName: 'New Patient', // Default - user can assign later
+        patientMrn: 'TBD'
+      };
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
+      // Add to reports array
+      existingReports.unshift(newReport);
 
-      const data = await response.json();
-      console.log('Upload successful:', data);
+      // Save back to localStorage
+      localStorage.setItem('medward_reports', JSON.stringify(existingReports));
+
+      console.log('Report saved locally:', newReport);
 
       setUploadSuccess(true);
 
@@ -40,7 +49,7 @@ export default function ScannerPage() {
       }, 2000);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload report. Please try again.');
+      alert('Failed to save report. Please try again.');
     } finally {
       setUploading(false);
     }
