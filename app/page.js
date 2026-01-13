@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
@@ -60,7 +62,7 @@ export default function HomePage() {
 
         {/* CTA */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-          <a
+          <Link
             href="/login"
             className="group px-10 py-5 bg-gradient-to-r from-primary via-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 shadow-xl relative overflow-hidden"
           >
@@ -69,7 +71,7 @@ export default function HomePage() {
               <span className="group-hover:translate-x-1 transition-transform">→</span>
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          </a>
+          </Link>
           <a
             href="#features"
             className="px-10 py-5 bg-white/90 backdrop-blur-sm text-gray-800 border-2 border-gray-300 rounded-2xl font-bold text-lg hover:bg-white hover:shadow-xl transform hover:scale-105 transition-all duration-300"
