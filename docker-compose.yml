@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  medward:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medward-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/medward.db
+      - AUDIT_DB_PATH=/app/data/audit.db
+      - KNOWLEDGE_DB_PATH=/app/data/knowledge.db
+    env_file:
+      - .env.local
+    volumes:
+      # Persist database files
+      - medward_data:/app/data
+      # Persist logs
+      - medward_logs:/app/logs
+      # Optional: Mount Google Cloud credentials
+      # - ./google-credentials.json:/app/google-credentials.json:ro
+    restart: unless-stopped
+    networks:
+      - medward-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add nginx for SSL termination and load balancing
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: medward-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - medward
+  #   restart: unless-stopped
+  #   networks:
+  #     - medward-network
+
+volumes:
+  medward_data:
+    driver: local
+  medward_logs:
+    driver: local
+
+networks:
+  medward-network:
+    driver: bridge
