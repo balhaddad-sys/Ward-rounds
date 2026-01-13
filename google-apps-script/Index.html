@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MedWard - Medical Report Interpreter</title>
+    <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
+</head>
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loading" class="view active loading-screen">
+            <div class="spinner"></div>
+            <p>Loading MedWard...</p>
+        </div>
+
+        <!-- Login View -->
+        <div id="login" class="view login-view">
+            <div class="logo">🏥</div>
+            <h1>MedWard</h1>
+            <p class="subtitle">Medical Report Interpreter</p>
+
+            <div class="login-card">
+                <input type="text" id="username" placeholder="Enter username" class="input">
+                <button onclick="handleLogin()" class="btn btn-primary">Continue</button>
+                <p class="hint">New user? Just enter any username</p>
+            </div>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboard" class="view dashboard-view">
+            <div class="header">
+                <h2>Dashboard</h2>
+                <p class="header-date" id="currentDate"></p>
+            </div>
+
+            <div class="content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="statPatients">0</div>
+                        <div class="stat-label">Patients</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📄</div>
+                        <div class="stat-value" id="statReports">0</div>
+                        <div class="stat-label">Reports</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value" id="statSaved">0</div>
+                        <div class="stat-label">API Saved</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="statConfidence">85%</div>
+                        <div class="stat-label">Confidence</div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h3>Recent Patients</h3>
+                    <button onclick="showView('newPatient')" class="btn-small">+ Add</button>
+                </div>
+
+                <div id="patientsList"></div>
+
+                <div class="fab" onclick="showView('scan')">📷</div>
+            </div>
+
+            <div class="bottom-nav">
+                <button class="nav-item active" onclick="showView('dashboard')">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">Home</div>
+                </button>
+                <button class="nav-item" onclick="showView('scan')">
+                    <div class="nav-icon">📷</div>
+                    <div class="nav-label">Scan</div>
+                </button>
+                <button class="nav-item" onclick="showView('patients')">
+                    <div class="nav-icon">👥</div>
+                    <div class="nav-label">Patients</div>
+                </button>
+                <button class="nav-item" onclick="logout()">
+                    <div class="nav-icon">🚪</div>
+                    <div class="nav-label">Logout</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- New Patient View -->
+        <div id="newPatient" class="view form-view">
+            <div class="header">
+                <button class="back-btn" onclick="showView('dashboard')">←</button>
+                <h2>New Patient</h2>
+            </div>
+
+            <div class="content">
+                <div class="form-card">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="patientName" class="input" placeholder="Patient name">
+                    </div>
+                    <div class="form-group">
+                        <label>MRN*</label>
+                        <input type="text" id="patientMRN" class="input" placeholder="Medical record number" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Age*</label>
+                            <input type="number" id="patientAge" class="input" placeholder="Age" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Gender*</label>
+                            <select id="patientGender" class="input" required>
+                                <option value="">Select</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Chief Complaint</label>
+                        <textarea id="patientCC" class="input" rows="3" placeholder="Chief complaint"></textarea>
+                    </div>
+                    <button onclick="savePatient()" class="btn btn-primary">Save Patient</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan View -->
+        <div id="scan" class="view scan-view">
+            <div class="header">
+                <button class="back-btn" onclick="showView('dashboard')">←</button>
+                <h2>Scan Document</h2>
+            </div>
+
+            <div class="content">
+                <div class="tabs">
+                    <button class="tab active" onclick="selectReportType('lab')">Lab</button>
+                    <button class="tab" onclick="selectReportType('imaging')">Imaging</button>
+                    <button class="tab" onclick="selectReportType('note')">Note</button>
+                    <button class="tab" onclick="selectReportType('ecg')">ECG</button>
+                </div>
+
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept="image/*" style="display: none" onchange="handleFileSelect(event)">
+                    <div class="upload-icon">📄</div>
+                    <h3>Upload Document</h3>
+                    <p>Tap to select image</p>
+                    <p class="hint">Supports: JPG, PNG</p>
+                </div>
+
+                <div id="preview" class="preview-area" style="display: none;">
+                    <img id="previewImage" style="max-width: 100%; border-radius: 12px;">
+                    <button onclick="processImage()" class="btn btn-primary" style="margin-top: 1rem;">Process Document</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing View -->
+        <div id="processing" class="view processing-view">
+            <div class="spinner-large"></div>
+            <h2>Processing Document</h2>
+            <p id="processingStatus">Extracting text...</p>
+
+            <div class="processing-steps">
+                <div class="processing-step" id="step1">
+                    <span class="step-icon">⟳</span>
+                    <span>Extracting text...</span>
+                </div>
+                <div class="processing-step" id="step2">
+                    <span class="step-icon">○</span>
+                    <span>Analyzing content...</span>
+                </div>
+                <div class="processing-step" id="step3">
+                    <span class="step-icon">○</span>
+                    <span>Generating pearls...</span>
+                </div>
+                <div class="processing-step" id="step4">
+                    <span class="step-icon">○</span>
+                    <span>Creating questions...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results View -->
+        <div id="results" class="view results-view">
+            <div class="results-header">
+                <div class="results-icon">✅</div>
+                <h2>Analysis Complete</h2>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('interpretation')">📋 Report</button>
+                <button class="tab" onclick="switchTab('pearls')">💎 Pearls</button>
+                <button class="tab" onclick="switchTab('questions')">❓ Questions</button>
+            </div>
+
+            <div class="content">
+                <div class="tab-content active" id="tab-interpretation"></div>
+                <div class="tab-content" id="tab-pearls"></div>
+                <div class="tab-content" id="tab-questions"></div>
+            </div>
+
+            <div class="action-bar">
+                <button onclick="showView('scan')" class="btn">Scan Another</button>
+                <button onclick="showView('dashboard')" class="btn btn-primary">Done</button>
+            </div>
+        </div>
+
+        <!-- Error View -->
+        <div id="error" class="view error-view">
+            <div class="error-icon">⚠️</div>
+            <h2>Error</h2>
+            <p id="errorMessage"></p>
+            <button onclick="showView('dashboard')" class="btn btn-primary">Go Back</button>
+        </div>
+    </div>
+
+    <?!= HtmlService.createHtmlOutputFromFile('Script').getContent(); ?>
+</body>
+</html>
