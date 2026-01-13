@@ -99,3 +99,6 @@ public/fallback-*.js
 # Documentation build
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# clasp (Google Apps Script) - credentials only
+.clasprc.json

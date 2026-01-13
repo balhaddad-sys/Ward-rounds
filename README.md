@@ -96,9 +96,13 @@ docker-compose logs -f medward
 
 ## 📖 Documentation
 
+### Deployment Guides
 - [Self-Hosted Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions for Next.js version
 - [Google Apps Script Guide](google-apps-script/README.md) - Serverless deployment option
-- [Google Apps Script Deployment](google-apps-script/DEPLOY.md) - Step-by-step Apps Script setup
+- [Google Apps Script Manual Deployment](google-apps-script/DEPLOY.md) - Step-by-step manual setup
+- [Google Apps Script GitHub Deployment](google-apps-script/DEPLOY-FROM-GITHUB.md) - Automated deployment with clasp
+
+### Other Documentation
 - See inline documentation in code files for API details
 
 ## 🔧 Configuration

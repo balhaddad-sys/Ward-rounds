@@ -45,7 +45,34 @@ https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxc
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+## 🚀 Deployment Options
+
+### **Option 1: Deploy from GitHub (Recommended)** 🌟
+
+Deploy automatically from your code editor using `clasp` and GitHub Actions:
+
+- ✅ **Version Control**: All changes tracked in Git
+- ✅ **Automatic Deployment**: Push to main = auto deploy
+- ✅ **Team Collaboration**: Multiple developers can contribute
+- ✅ **No Copy-Paste**: Deploy directly from your editor
+
+**[📖 See Full GitHub Deployment Guide →](DEPLOY-FROM-GITHUB.md)**
+
+Quick setup:
+```bash
+# Install clasp
+npm install -g @google/clasp
+
+# Run setup script
+./scripts/setup-clasp.sh
+
+# Or manually:
+clasp login
+clasp push
+clasp deploy
+```
+
+### **Option 2: Manual Web UI Deployment** (5 Minutes)
 
 ### **1. Get API Keys**
 - **OpenAI**: https://platform.openai.com/api-keys
