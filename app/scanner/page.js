@@ -25,12 +25,20 @@ export default function ScannerPage() {
 
       // Step 2: Interpret the document with AI
       console.log('[Scanner] Interpreting document...');
-      const { interpretDocument } = await import('@/lib/ai/medicalInterpreter');
+      const { interpretDocument, generateClinicalPearls, generateTeachingQuestions } = await import('@/lib/ai/medicalInterpreter');
       const interpretation = await interpretDocument(ocrResult);
 
       console.log('[Scanner] Interpretation complete');
 
-      // Step 3: Generate ward presentation
+      // Step 3: Generate clinical pearls
+      console.log('[Scanner] Generating clinical pearls...');
+      const clinicalPearls = await generateClinicalPearls(interpretation, documentType);
+
+      // Step 4: Generate teaching questions
+      console.log('[Scanner] Generating teaching questions...');
+      const potentialQuestions = await generateTeachingQuestions(interpretation, documentType);
+
+      // Step 5: Generate ward presentation
       console.log('[Scanner] Generating presentation...');
       const { generatePresentation } = await import('@/lib/presentation/generator');
 
@@ -40,11 +48,21 @@ export default function ScannerPage() {
         chiefComplaint: 'presenting'
       };
 
-      const presentationData = generatePresentation(interpretation, patientInfo, ocrResult);
+      // Create complete report structure for presentation generator
+      const reportForPresentation = {
+        type: documentType,
+        interpretation: interpretation,
+        clinicalPearls: clinicalPearls,
+        potentialQuestions: potentialQuestions,
+        extractedText: ocrResult.rawText,
+        ocrConfidence: ocrResult.confidence
+      };
+
+      const presentationData = generatePresentation(reportForPresentation, patientInfo);
 
       console.log('[Scanner] Presentation generated');
 
-      // Step 4: Save complete report to localStorage
+      // Step 6: Save complete report to localStorage
       const existingReports = JSON.parse(localStorage.getItem('medward_reports') || '[]');
 
       const newReport = {
