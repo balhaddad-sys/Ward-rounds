@@ -33,11 +33,11 @@ export default function DashboardPage() {
   };
 
   const handleScanReport = () => {
-    alert('📷 Scan Report feature coming soon!\n\nYou\'ll be able to:\n• Take photos of lab results\n• Upload PDF reports\n• Get AI-powered analysis');
+    router.push('/scanner');
   };
 
   const handleNewPatient = () => {
-    alert('➕ New Patient feature coming soon!\n\nYou\'ll be able to:\n• Add patient demographics\n• Track medical history\n• Manage ward admissions');
+    router.push('/patients');
   };
 
   const handleStudyPearls = () => {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   };
 
   const handleViewReports = () => {
-    alert('📊 View Reports feature coming soon!\n\nYou\'ll be able to:\n• Browse all reports\n• Filter by patient or date\n• Export data');
+    router.push('/reports');
   };
 
   if (!user) {
