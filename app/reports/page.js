@@ -16,62 +16,12 @@ export default function ReportsPage() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      // For now, use mock data. Replace with actual API call when available
-      const mockReports = [
-        {
-          id: 1,
-          type: 'Lab',
-          title: 'Complete Blood Count (CBC)',
-          patientName: 'John Doe',
-          patientMrn: 'MRN001234',
-          date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          status: 'analyzed',
-          fileType: 'PDF'
-        },
-        {
-          id: 2,
-          type: 'Imaging',
-          title: 'Chest X-Ray',
-          patientName: 'Jane Smith',
-          patientMrn: 'MRN005678',
-          date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          status: 'analyzed',
-          fileType: 'Image'
-        },
-        {
-          id: 3,
-          type: 'Lab',
-          title: 'Metabolic Panel',
-          patientName: 'Robert Johnson',
-          patientMrn: 'MRN009012',
-          date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          status: 'pending',
-          fileType: 'PDF'
-        },
-        {
-          id: 4,
-          type: 'Lab',
-          title: 'Liver Function Tests',
-          patientName: 'John Doe',
-          patientMrn: 'MRN001234',
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'analyzed',
-          fileType: 'PDF'
-        },
-        {
-          id: 5,
-          type: 'Imaging',
-          title: 'CT Abdomen',
-          patientName: 'Jane Smith',
-          patientMrn: 'MRN005678',
-          date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'analyzed',
-          fileType: 'PDF'
-        }
-      ];
-      setReports(mockReports);
+      // Read reports from localStorage
+      const savedReports = JSON.parse(localStorage.getItem('medward_reports') || '[]');
+      setReports(savedReports);
     } catch (error) {
       console.error('Error fetching reports:', error);
+      setReports([]);
     } finally {
       setLoading(false);
     }
