@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test {
+            background: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>🧪 Navigation Test Page</h1>
+        <p>This page tests if navigation is working with the correct basePath.</p>
+        <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+    </div>
+
+    <h2>Test Navigation:</h2>
+
+    <button onclick="testWindowLocation('/Ward-rounds/scanner/')">
+        📷 Test: Go to Scanner (window.location.href)
+    </button>
+
+    <button onclick="testWindowLocation('/Ward-rounds/patients/')">
+        ➕ Test: Go to Patients (window.location.href)
+    </button>
+
+    <button onclick="testWindowLocation('/Ward-rounds/reports/')">
+        📊 Test: Go to Reports (window.location.href)
+    </button>
+
+    <button onclick="testWindowLocation('/Ward-rounds/dashboard/')" class="test">
+        🏥 Test: Go to Dashboard (window.location.href)
+    </button>
+
+    <div class="info" style="margin-top: 30px;">
+        <h3>Console Output:</h3>
+        <div id="console" style="font-family: monospace; font-size: 12px;"></div>
+    </div>
+
+    <script>
+        // Display current URL
+        document.getElementById('currentUrl').textContent = window.location.href;
+
+        function log(message) {
+            const consoleDiv = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            consoleDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            console.log(message);
+        }
+
+        function testWindowLocation(path) {
+            log(`Attempting navigation to: ${path}`);
+            log(`Using: window.location.href`);
+
+            // This should work in static exports
+            window.location.href = path;
+        }
+
+        log('Test page loaded successfully');
+        log(`Current location: ${window.location.href}`);
+        log(`BasePath expected: /Ward-rounds/`);
+    </script>
+</body>
+</html>
