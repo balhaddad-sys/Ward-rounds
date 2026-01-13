@@ -48,12 +48,20 @@ AI-powered medical report interpretation system for ward presentations. Transfor
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🌐 Try the Google Apps Script Version (No Setup Required!)
+
+**Live Demo**: [https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec](https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec)
+
+Want to deploy your own? See the [Google Apps Script Deployment Guide](google-apps-script/DEPLOY.md) for a serverless option that requires no infrastructure!
+
+### 💻 Self-Hosted Installation
+
+#### Prerequisites
 - Node.js 18+
 - OpenAI API key
 - Google Cloud account (Vision API enabled)
 
-### Installation
+#### Installation
 
 ```bash
 # 1. Clone repository
@@ -88,7 +96,9 @@ docker-compose logs -f medward
 
 ## 📖 Documentation
 
-- [Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions
+- [Self-Hosted Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions for Next.js version
+- [Google Apps Script Guide](google-apps-script/README.md) - Serverless deployment option
+- [Google Apps Script Deployment](google-apps-script/DEPLOY.md) - Step-by-step Apps Script setup
 - See inline documentation in code files for API details
 
 ## 🔧 Configuration

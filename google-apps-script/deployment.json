@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "deploymentDate": "2026-01-13",
+  "webAppUrl": "https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec",
+  "projectInfo": {
+    "name": "MedWard",
+    "description": "Google Apps Script deployment of MedWard - Medical Report Interpreter",
+    "features": [
+      "AI-Powered medical report interpretation",
+      "OCR with Google Cloud Vision",
+      "Clinical pearls generation",
+      "Attending questions with answers",
+      "Patient management",
+      "Mobile-first design"
+    ]
+  },
+  "configuration": {
+    "requiredScriptProperties": [
+      "OPENAI_API_KEY",
+      "GOOGLE_VISION_API_KEY"
+    ],
+    "optionalScriptProperties": []
+  },
+  "files": {
+    "backend": [
+      "Code.gs",
+      "API.gs"
+    ],
+    "frontend": [
+      "Index.html",
+      "Styles.html",
+      "Script.html"
+    ]
+  },
+  "documentation": {
+    "readme": "README.md",
+    "deployment": "DEPLOY.md"
+  },
+  "notes": [
+    "This URL points to the deployed Google Apps Script web application",
+    "To access the Apps Script project editor, visit: https://script.google.com",
+    "For deployment instructions, see DEPLOY.md",
+    "For feature documentation, see README.md"
+  ]
+}
