@@ -124,7 +124,7 @@ export default function PatientsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => window.location.href = '/Ward-rounds/dashboard/'}
                 className="text-gray-600 hover:text-gray-900 transition-colors"
               >
                 ← Back

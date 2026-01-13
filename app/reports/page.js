@@ -132,7 +132,7 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => window.location.href = '/Ward-rounds/dashboard/'}
                 className="text-gray-600 hover:text-gray-900 transition-colors"
               >
                 ← Back
@@ -146,7 +146,7 @@ export default function ReportsPage() {
               </div>
             </div>
             <button
-              onClick={() => router.push('/scanner')}
+              onClick={() => window.location.href = '/Ward-rounds/scanner/'}
               className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors shadow-md"
             >
               📷 Upload Report
@@ -188,7 +188,7 @@ export default function ReportsPage() {
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Reports Yet</h3>
             <p className="text-gray-600 mb-6">Upload your first medical report to get started</p>
             <button
-              onClick={() => router.push('/scanner')}
+              onClick={() => window.location.href = '/Ward-rounds/scanner/'}
               className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors shadow-md"
             >
               📷 Upload Report
