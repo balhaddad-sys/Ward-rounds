@@ -14,42 +14,76 @@ export default function ScannerPage() {
     setUploadSuccess(false);
 
     try {
-      // Since this is a static export, store report info in localStorage
-      // Get existing reports
+      // Step 1: Extract text from document using OCR
+      console.log('[Scanner] Starting OCR extraction...');
+      const { processDocument } = await import('@/lib/ocr/textExtractor');
+
+      const documentType = file.type.includes('pdf') ? 'general' : 'lab';
+      const ocrResult = await processDocument(file, documentType);
+
+      console.log('[Scanner] OCR complete, confidence:', ocrResult.confidence);
+
+      // Step 2: Interpret the document with AI
+      console.log('[Scanner] Interpreting document...');
+      const { interpretDocument } = await import('@/lib/ai/medicalInterpreter');
+      const interpretation = await interpretDocument(ocrResult);
+
+      console.log('[Scanner] Interpretation complete');
+
+      // Step 3: Generate ward presentation
+      console.log('[Scanner] Generating presentation...');
+      const { generatePresentation } = await import('@/lib/presentation/generator');
+
+      const patientInfo = {
+        age: 'XX',
+        gender: 'unknown',
+        chiefComplaint: 'presenting'
+      };
+
+      const presentationData = generatePresentation(interpretation, patientInfo, ocrResult);
+
+      console.log('[Scanner] Presentation generated');
+
+      // Step 4: Save complete report to localStorage
       const existingReports = JSON.parse(localStorage.getItem('medward_reports') || '[]');
 
-      // Create new report entry
       const newReport = {
         id: Date.now(),
-        type: file.type.includes('pdf') ? 'Lab' : 'Imaging',
+        type: documentType,
         title: file.name,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         uploadMethod: method,
         date: new Date().toISOString(),
-        status: 'pending',
-        patientName: 'New Patient', // Default - user can assign later
-        patientMrn: 'TBD'
+        status: 'analyzed',
+        patientName: 'New Patient',
+        patientMrn: 'TBD',
+        // Add OCR results
+        extractedText: ocrResult.rawText,
+        ocrConfidence: ocrResult.confidence,
+        // Add AI interpretation
+        interpretation: interpretation,
+        // Add presentation
+        presentation: presentationData.presentation,
+        clinicalPearls: presentationData.clinicalPearls,
+        potentialQuestions: presentationData.potentialQuestions
       };
 
-      // Add to reports array
       existingReports.unshift(newReport);
-
-      // Save back to localStorage
       localStorage.setItem('medward_reports', JSON.stringify(existingReports));
 
-      console.log('Report saved locally:', newReport);
+      console.log('[Scanner] Report saved successfully');
 
       setUploadSuccess(true);
 
-      // Redirect to reports page after 2 seconds
+      // Redirect to report detail page after 2 seconds
       setTimeout(() => {
-        window.location.href = '/Ward-rounds/reports/';
+        window.location.href = `/Ward-rounds/reports/view/?id=${newReport.id}`;
       }, 2000);
     } catch (error) {
-      console.error('Upload error:', error);
-      alert('Failed to save report. Please try again.');
+      console.error('[Scanner] Error:', error);
+      alert(`Failed to process report: ${error.message}`);
     } finally {
       setUploading(false);
     }
