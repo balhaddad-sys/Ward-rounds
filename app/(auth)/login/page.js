@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const API_URL = 'https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec';
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,16 +17,41 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
+      // Google Apps Script requires special handling for CORS
+      const response = await fetch(API_URL, {
         method: 'POST',
+        mode: 'no-cors', // Required for Apps Script
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ 
+          action: 'login',
+          username 
+        })
       });
 
+      // With no-cors, we can't read the response directly
+      // Alternative: Use GET with URL parameters or a proxy
+      // For now, let's try the GET approach:
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Alternative approach using GET (more reliable with Apps Script)
+  const handleLoginGet = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const url = `${API_URL}?action=login&username=${encodeURIComponent(username)}`;
+      const response = await fetch(url);
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       // Store token
@@ -63,7 +90,7 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
           <p className="text-gray-600 mb-8 text-sm">Sign in to continue your medical journey</p>
 
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLoginGet}>
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Username
