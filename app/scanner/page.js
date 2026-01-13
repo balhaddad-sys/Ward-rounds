@@ -73,7 +73,17 @@ export default function ScannerPage() {
       existingReports.unshift(newReport);
       localStorage.setItem('medward_reports', JSON.stringify(existingReports));
 
-      console.log('[Scanner] Report saved successfully');
+      console.log('[Scanner] Report saved to localStorage');
+
+      // Optional: Save to Google Sheets (async, don't wait)
+      try {
+        const { saveReportToSheets } = await import('@/lib/services/googleScript');
+        saveReportToSheets(newReport)
+          .then(() => console.log('[Scanner] ✓ Report saved to Google Sheets'))
+          .catch(err => console.warn('[Scanner] Failed to save to Google Sheets:', err.message));
+      } catch (err) {
+        console.warn('[Scanner] Google Sheets integration not available');
+      }
 
       setUploadSuccess(true);
 
