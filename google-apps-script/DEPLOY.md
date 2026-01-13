@@ -192,6 +192,14 @@ https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxc
 
 ## 🔧 **Troubleshooting**
 
+> **💡 For detailed troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
+
+### **Issue: "No HTML file named Index was found"**
+**Solution**:
+1. HTML files must be named WITHOUT .html extension in Apps Script
+2. Create HTML files named exactly: `Index`, `Styles`, `Script` (not Index.html)
+3. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed fix steps
+
 ### **Issue: "Script function not found"**
 **Solution**: Make sure all 5 files are created and saved properly.
 

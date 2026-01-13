@@ -202,13 +202,15 @@ MIT License - Use freely for personal and educational purposes
 ## 🆘 Support
 
 **Issues?**
-1. Check DEPLOY.md troubleshooting section
-2. Review Apps Script execution logs
-3. Verify API keys are correct
-4. Test API keys independently
+1. **See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for common errors and solutions
+2. Check DEPLOY.md troubleshooting section
+3. Review Apps Script execution logs
+4. Verify API keys are correct
+5. Ensure HTML files are named correctly (Index, Styles, Script - without .html)
 
 **Questions?**
 - See DEPLOY.md for detailed instructions
+- Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for specific error fixes
 - Check execution logs for errors
 - Verify all files are properly created
 
