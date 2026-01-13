@@ -6,7 +6,7 @@ import './globals.css';
 export const metadata = {
   title: 'MedWard - Medical Report Interpreter',
   description: 'AI-powered medical report interpretation for ward presentations',
-  manifest: '/manifest.json',
+  manifest: '/Ward-rounds/manifest.json',
   themeColor: '#0066CC',
   viewport: {
     width: 'device-width',
@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/Ward-rounds/icons/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
