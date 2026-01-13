@@ -286,3 +286,133 @@ function getLearningStats(token) {
     };
   }
 }
+
+/**
+ * Handle POST requests from web app (Next.js client)
+ * This enables the Next.js app to use OpenAI through this script
+ */
+function doPost(e) {
+  try {
+    // Enable CORS
+    const output = ContentService.createTextOutput();
+    output.setMimeType(ContentService.MimeType.JSON);
+
+    // Parse request
+    let requestData;
+    try {
+      requestData = JSON.parse(e.postData.contents);
+    } catch (error) {
+      return output.setContent(JSON.stringify({
+        success: false,
+        error: 'Invalid JSON payload'
+      }));
+    }
+
+    const action = requestData.action;
+    Logger.log('Received action: ' + action);
+
+    // Handle different actions
+    switch (action) {
+      case 'ping':
+        // Connection test
+        return output.setContent(JSON.stringify({
+          success: true,
+          message: 'Connected to Google Apps Script',
+          timestamp: new Date().toISOString()
+        }));
+
+      case 'interpret':
+        // Interpret medical document using OpenAI
+        const text = requestData.text;
+        const documentType = requestData.documentType || 'general';
+
+        Logger.log('Interpreting ' + documentType + ' document...');
+        const interpretation = interpretReport(text, documentType);
+
+        return output.setContent(JSON.stringify({
+          success: interpretation.success,
+          interpretation: interpretation.data,
+          error: interpretation.error
+        }));
+
+      case 'generatePearls':
+        // Generate clinical pearls using OpenAI
+        Logger.log('Generating clinical pearls...');
+        const pearlsResult = generateClinicalPearls(requestData.interpretation);
+
+        return output.setContent(JSON.stringify({
+          success: pearlsResult.success,
+          pearls: pearlsResult.data,
+          error: pearlsResult.error
+        }));
+
+      case 'generateQuestions':
+        // Generate teaching questions using OpenAI
+        Logger.log('Generating teaching questions...');
+        const questionsResult = generateQuestions(requestData.interpretation);
+
+        return output.setContent(JSON.stringify({
+          success: questionsResult.success,
+          questions: questionsResult.data,
+          error: questionsResult.error
+        }));
+
+      case 'saveReport':
+        // Save report to Google Sheets
+        Logger.log('Saving report to Sheets...');
+        const report = requestData.report;
+        const db = getDatabaseSheet('reports');
+
+        db.appendRow([
+          report.id || Utilities.getUuid(),
+          'web-app', // userId placeholder for web app
+          report.type,
+          report.extractedText,
+          JSON.stringify(report.interpretation),
+          JSON.stringify(report.clinicalPearls || {}),
+          JSON.stringify(report.potentialQuestions || {}),
+          new Date()
+        ]);
+
+        return output.setContent(JSON.stringify({
+          success: true,
+          message: 'Report saved to Google Sheets'
+        }));
+
+      case 'uploadFile':
+        // Upload file to Google Drive
+        Logger.log('Uploading file to Drive...');
+        const fileName = requestData.fileName;
+        const fileData = requestData.fileData; // base64
+        const fileType = requestData.fileType;
+
+        const blob = Utilities.newBlob(
+          Utilities.base64Decode(fileData),
+          fileType,
+          fileName
+        );
+
+        const folder = DriveApp.getFolderById(getApiKey('DRIVE_FOLDER_ID') || DriveApp.getRootFolder().getId());
+        const file = folder.createFile(blob);
+
+        return output.setContent(JSON.stringify({
+          success: true,
+          fileId: file.getId(),
+          fileUrl: file.getUrl()
+        }));
+
+      default:
+        return output.setContent(JSON.stringify({
+          success: false,
+          error: 'Unknown action: ' + action
+        }));
+    }
+
+  } catch (error) {
+    Logger.log('doPost error: ' + error);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
