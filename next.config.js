@@ -133,15 +133,20 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
-  output: 'standalone',
+  output: 'export',
+  distDir: 'docs',
   reactStrictMode: true,
   swcMinify: true,
+  basePath: '/Ward-rounds',
+  assetPrefix: '/Ward-rounds/',
+  trailingSlash: true,
 
   experimental: {
     serverComponentsExternalPackages: ['better-sqlite3']
   },
 
   images: {
+    unoptimized: true,
     domains: ['drive.google.com', 'lh3.googleusercontent.com'],
     formats: ['image/avif', 'image/webp']
   },
