@@ -32,6 +32,22 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
+  const handleScanReport = () => {
+    alert('📷 Scan Report feature coming soon!\n\nYou\'ll be able to:\n• Take photos of lab results\n• Upload PDF reports\n• Get AI-powered analysis');
+  };
+
+  const handleNewPatient = () => {
+    alert('➕ New Patient feature coming soon!\n\nYou\'ll be able to:\n• Add patient demographics\n• Track medical history\n• Manage ward admissions');
+  };
+
+  const handleStudyPearls = () => {
+    alert('🎓 Study Pearls feature coming soon!\n\nYou\'ll be able to:\n• Review clinical pearls\n• Access teaching points\n• Study medical concepts');
+  };
+
+  const handleViewReports = () => {
+    alert('📊 View Reports feature coming soon!\n\nYou\'ll be able to:\n• Browse all reports\n• Filter by patient or date\n• Export data');
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -129,7 +145,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid sm:grid-cols-2 gap-4">
-              <button className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
+              <button onClick={handleScanReport} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
                   <span className="text-3xl">📷</span>
                 </div>
@@ -137,7 +153,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">Upload lab results or imaging reports for AI analysis</p>
               </button>
 
-              <button className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
+              <button onClick={handleNewPatient} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
                 <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
                   <span className="text-3xl">➕</span>
                 </div>
@@ -145,7 +161,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">Add a new patient to your ward list</p>
               </button>
 
-              <button className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
+              <button onClick={handleStudyPearls} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
                 <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
                   <span className="text-3xl">🎓</span>
                 </div>
@@ -153,7 +169,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">Review clinical pearls and teaching points</p>
               </button>
 
-              <button className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
+              <button onClick={handleViewReports} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 text-left group">
                 <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
                   <span className="text-3xl">📊</span>
                 </div>
