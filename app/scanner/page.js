@@ -36,7 +36,7 @@ export default function ScannerPage() {
 
       // Redirect to reports page after 2 seconds
       setTimeout(() => {
-        router.push('/reports');
+        window.location.href = '/Ward-rounds/reports/';
       }, 2000);
     } catch (error) {
       console.error('Upload error:', error);
@@ -54,7 +54,7 @@ export default function ScannerPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => window.location.href = '/Ward-rounds/dashboard/'}
                 className="text-gray-600 hover:text-gray-900 transition-colors"
               >
                 ← Back

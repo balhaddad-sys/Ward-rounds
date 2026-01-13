@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
-    patients: 12,
-    reports: 45,
-    presentations: 8,
-    pearls: 127
+    patients: 0,
+    reports: 0,
+    presentations: 0,
+    pearls: 0
   });
   const router = useRouter();
 
@@ -19,25 +19,25 @@ export default function DashboardPage() {
     const userData = localStorage.getItem('medward_user');
 
     if (!token || !userData) {
-      router.push('/login');
+      window.location.href = '/Ward-rounds/login/';
       return;
     }
 
     setUser(JSON.parse(userData));
-  }, [router]);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('medward_token');
     localStorage.removeItem('medward_user');
-    router.push('/login');
+    window.location.href = '/Ward-rounds/login/';
   };
 
   const handleScanReport = () => {
-    router.push('/scanner');
+    window.location.href = '/Ward-rounds/scanner/';
   };
 
   const handleNewPatient = () => {
-    router.push('/patients');
+    window.location.href = '/Ward-rounds/patients/';
   };
 
   const handleStudyPearls = () => {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   };
 
   const handleViewReports = () => {
-    router.push('/reports');
+    window.location.href = '/Ward-rounds/reports/';
   };
 
   if (!user) {
