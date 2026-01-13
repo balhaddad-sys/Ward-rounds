@@ -1,110 +1,131 @@
-import Link from 'next/link';
+'use client';
 
-export default function HomePage() {
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+const API_URL = 'https://script.google.com/macros/s/AKfycbz5I5uGmK3f-_k7pi9HMsW1YMANS8NGnC8-kIDxcEB1vesYXpmwNHRnQRGX_GqV19iWJw/exec';
+
+export default function LoginPage() {
+  const [username, setUsername] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // Use GET request with URL parameters (works better with Apps Script CORS)
+      const url = `${API_URL}?action=login&username=${encodeURIComponent(username)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Store token
+      localStorage.setItem('medward_token', data.token);
+      localStorage.setItem('medward_user', JSON.stringify(data.user));
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-pink-400/20 to-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-indigo-400/10 to-cyan-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      <div className="max-w-4xl w-full text-center relative z-10">
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
-        <div className="w-28 h-28 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-300 animate-bounce-slow">
-          <span className="text-6xl">🏥</span>
+        <div className="text-center mb-8">
+          <div className="w-24 h-24 bg-gradient-to-br from-primary via-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-300 animate-bounce-slow">
+            <span className="text-5xl">🏥</span>
+          </div>
+          <h1 className="text-3xl font-extrabold mb-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">MedWard</h1>
+          <p className="text-gray-700 font-medium">Medical Report Interpreter</p>
         </div>
 
-        {/* Title */}
-        <h1 className="text-6xl md:text-7xl font-extrabold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-pulse-slow">
-          MedWard
-        </h1>
-        <p className="text-2xl md:text-3xl text-gray-700 mb-4 font-semibold">
-          AI-Powered Medical Report Interpreter
-        </p>
-        <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
-          Transform your medical reports into structured presentations with the power of GPT-4
-        </p>
+        {/* Login Card */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border-2 border-white/50">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+          <p className="text-gray-600 mb-8 text-sm">Sign in to continue your medical journey</p>
 
-        {/* Features */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-blue-200 group">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform">
-              <span className="text-4xl">📷</span>
+          <form onSubmit={handleLogin}>
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Username
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-2xl">👤</span>
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  className="w-full pl-14 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all bg-white/50 font-medium text-gray-900 placeholder:text-gray-400"
+                  required
+                />
+              </div>
             </div>
-            <h3 className="font-bold text-gray-900 mb-2 text-xl">Scan Documents</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Upload lab results, imaging reports, or clinical notes with drag & drop simplicity
+
+            {error && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-200 text-red-700 rounded-xl text-sm font-medium flex items-center gap-2">
+                <span className="text-xl">⚠️</span>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-primary via-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-xl relative overflow-hidden group"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <span className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </>
+                )}
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <p className="text-center text-sm text-gray-600 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg p-3">
+              <span className="font-medium">New user?</span> Just enter any username to create an account
             </p>
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-purple-200 group">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform">
-              <span className="text-4xl">🧠</span>
-            </div>
-            <h3 className="font-bold text-gray-900 mb-2 text-xl">AI Interpretation</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Get instant GPT-4 powered analysis and clinical insights in seconds
-            </p>
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-amber-200 group">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform">
-              <span className="text-4xl">💎</span>
-            </div>
-            <h3 className="font-bold text-gray-900 mb-2 text-xl">Clinical Pearls</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Learn with auto-generated teaching points and clinical knowledge gems
-            </p>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-          <Link
-            href="/login"
-            className="group px-10 py-5 bg-gradient-to-r from-primary via-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 shadow-xl relative overflow-hidden"
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              Get Started
-              <span className="group-hover:translate-x-1 transition-transform">→</span>
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          </Link>
-          <a
-            href="#features"
-            className="px-10 py-5 bg-white/90 backdrop-blur-sm text-gray-800 border-2 border-gray-300 rounded-2xl font-bold text-lg hover:bg-white hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-          >
-            Learn More
-          </a>
-        </div>
-
-        {/* Stats */}
-        <div className="pt-12 border-t-2 border-gray-200/50">
-          <div className="grid grid-cols-3 gap-8">
-            <div className="transform hover:scale-110 transition-transform">
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">60-80%</div>
-              <div className="text-sm text-gray-700 font-medium">API Cost Savings</div>
-            </div>
-            <div className="transform hover:scale-110 transition-transform">
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">HIPAA</div>
-              <div className="text-sm text-gray-700 font-medium">Compliant</div>
-            </div>
-            <div className="transform hover:scale-110 transition-transform">
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">PWA</div>
-              <div className="text-sm text-gray-700 font-medium">Works Offline</div>
-            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-12 p-6 bg-gradient-to-r from-rose-100 via-pink-100 to-purple-100 rounded-2xl">
-          <p className="text-gray-800 font-medium flex items-center justify-center gap-2">
-            Built with <span className="text-2xl animate-pulse">❤️</span> for medical professionals
+        <div className="mt-6 p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50">
+          <p className="text-center text-sm text-gray-700 font-medium flex items-center justify-center gap-2">
+            <span className="text-lg">🔒</span>
+            Your medical data is encrypted and stored securely
           </p>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
