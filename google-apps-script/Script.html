@@ -1,0 +1,380 @@
+<script>
+// Global state
+let currentUser = null;
+let currentToken = null;
+let selectedReportType = 'lab';
+let selectedImage = null;
+let currentReport = null;
+
+// Initialize app
+window.onload = function() {
+    // Check for existing session
+    const token = localStorage.getItem('medward_token');
+    const user = localStorage.getItem('medward_user');
+
+    if (token && user) {
+        currentToken = token;
+        currentUser = JSON.parse(user);
+        showView('dashboard');
+        loadDashboardData();
+    } else {
+        showView('login');
+    }
+
+    // Set current date
+    const dateEl = document.getElementById('currentDate');
+    if (dateEl) {
+        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        dateEl.textContent = new Date().toLocaleDateString('en-US', options);
+    }
+};
+
+// View management
+function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+
+    // Update nav if on dashboard
+    if (viewId === 'dashboard') {
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.nav-item')[0].classList.add('active');
+    }
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    showView('error');
+}
+
+// Authentication
+function handleLogin() {
+    const username = document.getElementById('username').value.trim();
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+
+    showView('loading');
+
+    google.script.run
+        .withSuccessHandler(function(response) {
+            if (response.success) {
+                currentToken = response.token;
+                currentUser = response.user;
+                localStorage.setItem('medward_token', response.token);
+                localStorage.setItem('medward_user', JSON.stringify(response.user));
+                showView('dashboard');
+                loadDashboardData();
+            } else {
+                showError(response.error);
+            }
+        })
+        .withFailureHandler(function(error) {
+            showError('Login failed: ' + error.message);
+        })
+        .loginUser(username);
+}
+
+function logout() {
+    localStorage.removeItem('medward_token');
+    localStorage.removeItem('medward_user');
+    currentToken = null;
+    currentUser = null;
+    showView('login');
+}
+
+// Dashboard
+function loadDashboardData() {
+    // Load patients
+    google.script.run
+        .withSuccessHandler(function(response) {
+            if (response.success) {
+                displayPatients(response.patients);
+                document.getElementById('statPatients').textContent = response.patients.length;
+            }
+        })
+        .withFailureHandler(function(error) {
+            console.error('Failed to load patients:', error);
+        })
+        .getPatients(currentToken);
+
+    // Load stats
+    google.script.run
+        .withSuccessHandler(function(response) {
+            if (response.success) {
+                document.getElementById('statReports').textContent = response.stats.totalReports;
+                document.getElementById('statSaved').textContent = response.stats.apiCallsSaved;
+                document.getElementById('statConfidence').textContent =
+                    Math.round(response.stats.averageConfidence * 100) + '%';
+            }
+        })
+        .withFailureHandler(function(error) {
+            console.error('Failed to load stats:', error);
+        })
+        .getLearningStats(currentToken);
+}
+
+function displayPatients(patients) {
+    const container = document.getElementById('patientsList');
+    if (!patients || patients.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                <p>No patients yet</p>
+                <button onclick="showView('newPatient')" class="btn btn-primary" style="margin-top: 1rem;">Add First Patient</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = patients.map(patient => `
+        <div class="patient-card">
+            <div class="patient-header">
+                <div class="patient-avatar">${getInitials(patient.name || 'P')}</div>
+                <div class="patient-info">
+                    <div class="patient-name">${patient.name || 'Patient ' + patient.mrn}</div>
+                    <div class="patient-details">${patient.age}yo ${patient.gender?.charAt(0).toUpperCase()} • MRN: ${patient.mrn}</div>
+                </div>
+            </div>
+            <div class="patient-details" style="margin-top: 0.5rem;">CC: ${patient.chiefComplaint || 'Not specified'}</div>
+        </div>
+    `).join('');
+}
+
+function getInitials(name) {
+    if (!name) return 'P';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+        return parts[0][0] + parts[parts.length - 1][0];
+    }
+    return name[0];
+}
+
+// Patient Management
+function savePatient() {
+    const patientData = {
+        name: document.getElementById('patientName').value.trim(),
+        mrn: document.getElementById('patientMRN').value.trim(),
+        age: parseInt(document.getElementById('patientAge').value),
+        gender: document.getElementById('patientGender').value,
+        chiefComplaint: document.getElementById('patientCC').value.trim()
+    };
+
+    if (!patientData.mrn || !patientData.age || !patientData.gender) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    showView('loading');
+
+    google.script.run
+        .withSuccessHandler(function(response) {
+            if (response.success) {
+                showView('dashboard');
+                loadDashboardData();
+                // Clear form
+                document.getElementById('patientName').value = '';
+                document.getElementById('patientMRN').value = '';
+                document.getElementById('patientAge').value = '';
+                document.getElementById('patientGender').value = '';
+                document.getElementById('patientCC').value = '';
+            } else {
+                showError(response.error);
+            }
+        })
+        .withFailureHandler(function(error) {
+            showError('Failed to save patient: ' + error.message);
+        })
+        .createPatient(currentToken, patientData);
+}
+
+// Scan & Upload
+function selectReportType(type) {
+    selectedReportType = type;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        selectedImage = e.target.result;
+        document.getElementById('previewImage').src = selectedImage;
+        document.getElementById('preview').style.display = 'block';
+        document.querySelector('.upload-area').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function processImage() {
+    if (!selectedImage) {
+        alert('Please select an image first');
+        return;
+    }
+
+    showView('processing');
+    updateProcessingStep(1, 'active');
+
+    // Call backend to process document
+    google.script.run
+        .withSuccessHandler(function(response) {
+            if (response.success) {
+                currentReport = response.report;
+                displayResults(response.report);
+                showView('results');
+            } else {
+                showError(response.error);
+            }
+        })
+        .withFailureHandler(function(error) {
+            showError('Processing failed: ' + error.message);
+        })
+        .processDocument(currentToken, selectedImage, selectedReportType);
+
+    // Simulate progress for user feedback
+    setTimeout(() => updateProcessingStep(1, 'complete'), 3000);
+    setTimeout(() => updateProcessingStep(2, 'active'), 3000);
+    setTimeout(() => updateProcessingStep(2, 'complete'), 8000);
+    setTimeout(() => updateProcessingStep(3, 'active'), 8000);
+    setTimeout(() => updateProcessingStep(3, 'complete'), 12000);
+    setTimeout(() => updateProcessingStep(4, 'active'), 12000);
+}
+
+function updateProcessingStep(stepNum, status) {
+    const step = document.getElementById('step' + stepNum);
+    if (!step) return;
+
+    step.classList.remove('active', 'complete');
+    if (status !== 'pending') {
+        step.classList.add(status);
+    }
+
+    const icon = step.querySelector('.step-icon');
+    if (status === 'complete') {
+        icon.textContent = '✓';
+    } else if (status === 'active') {
+        icon.textContent = '⟳';
+    } else {
+        icon.textContent = '○';
+    }
+}
+
+// Results Display
+function displayResults(report) {
+    // Display interpretation
+    const interp = report.interpretation;
+    const interpContent = document.getElementById('tab-interpretation');
+    interpContent.innerHTML = `
+        <div class="result-card">
+            <div class="result-title">Summary</div>
+            <div class="result-content">${interp.summary || 'No summary available'}</div>
+        </div>
+        ${interp.findings && interp.findings.length > 0 ? `
+            <div class="result-card">
+                <div class="result-title">Key Findings</div>
+                ${interp.findings.map(f => `
+                    <div class="finding ${f.status === 'critical' ? 'critical' : f.status === 'abnormal' ? 'abnormal' : ''}">
+                        <strong>${f.finding}:</strong> ${f.value || ''} ${f.significance || ''}
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+        ${interp.criticalAlerts && interp.criticalAlerts.length > 0 ? `
+            <div class="result-card">
+                <div class="result-title">⚠️ Critical Alerts</div>
+                <div class="result-content">
+                    ${interp.criticalAlerts.map(alert => `• ${alert}`).join('<br>')}
+                </div>
+            </div>
+        ` : ''}
+        ${interp.differentialConsiderations && interp.differentialConsiderations.length > 0 ? `
+            <div class="result-card">
+                <div class="result-title">Differential Considerations</div>
+                <div class="result-content">
+                    ${interp.differentialConsiderations.map((dx, i) => `${i+1}. ${dx}`).join('<br>')}
+                </div>
+            </div>
+        ` : ''}
+        ${interp.recommendedActions && interp.recommendedActions.length > 0 ? `
+            <div class="result-card">
+                <div class="result-title">Recommended Actions</div>
+                <div class="result-content">
+                    ${interp.recommendedActions.map(action => `• ${action}`).join('<br>')}
+                </div>
+            </div>
+        ` : ''}
+    `;
+
+    // Display pearls
+    const pearls = report.pearls;
+    const pearlsContent = document.getElementById('tab-pearls');
+    if (pearls && pearls.pearls && pearls.pearls.length > 0) {
+        pearlsContent.innerHTML = pearls.pearls.map((pearl, i) => `
+            <div class="pearl-card" style="background: ${getPearlGradient(i)};">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">💎</div>
+                <div class="result-title" style="color: white;">${pearl.pearl}</div>
+                <div class="result-content" style="color: rgba(255,255,255,0.9); margin-top: 0.5rem;">
+                    ${pearl.relevance}
+                </div>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                    <span style="background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;">
+                        ${pearl.difficulty}
+                    </span>
+                    <span style="background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;">
+                        ${pearl.category}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        pearlsContent.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">No clinical pearls available</p>';
+    }
+
+    // Display questions
+    const questions = report.questions;
+    const questionsContent = document.getElementById('tab-questions');
+    if (questions && questions.questions && questions.questions.length > 0) {
+        questionsContent.innerHTML = questions.questions.map((q, i) => `
+            <div class="question-card">
+                <div class="result-title">${i+1}. ${q.question}</div>
+                <button class="reveal-btn" onclick="toggleAnswer(${i})">Reveal Answer</button>
+                <div class="answer" id="answer-${i}">
+                    <strong>Answer:</strong> ${q.answer}<br><br>
+                    <strong>Teaching Point:</strong> ${q.teachingPoint}
+                </div>
+            </div>
+        `).join('');
+    } else {
+        questionsContent.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">No questions available</p>';
+    }
+}
+
+function getPearlGradient(index) {
+    const gradients = [
+        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+        'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+        'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+        'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
+    ];
+    return gradients[index % gradients.length];
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+function toggleAnswer(index) {
+    const answer = document.getElementById('answer-' + index);
+    const btn = event.target;
+
+    answer.classList.toggle('revealed');
+    btn.textContent = answer.classList.contains('revealed') ? 'Hide Answer' : 'Reveal Answer';
+}
+</script>
