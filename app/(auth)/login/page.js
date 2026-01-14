@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { captureLoginFailure } from '@/lib/analytics/login-failure-analyzer';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbwWYEiLB0bdOfLt9bSizC9vLL0a-Zut52DqSjNgd6roAk7sdQ8cI0MzHsP2mk66JwK5/exec';
 
@@ -22,20 +23,24 @@ export default function LoginPage() {
       return;
     }
 
+    const startTime = Date.now();
+    let response = null;
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'login',
+        username: username.trim()
+      })
+    };
+
     try {
       console.log('[Login] Attempting login for:', username);
 
       // Use Google Apps Script backend with POST + JSON
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'login',
-          username: username.trim()
-        })
-      });
+      response = await fetch(API_URL, requestOptions);
 
       console.log('[Login] Response status:', response.status);
 
@@ -65,6 +70,23 @@ export default function LoginPage() {
     } catch (err) {
       console.error('[Login] Error:', err);
       setError(err.message || 'Login failed. Please try again.');
+
+      // Capture failure for post-hoc analysis
+      try {
+        await captureLoginFailure({
+          error: err,
+          response: response,
+          url: API_URL,
+          requestOptions: requestOptions,
+          username: username.trim(),
+          timing: {
+            start: startTime,
+            duration: Date.now() - startTime
+          }
+        });
+      } catch (analyzerError) {
+        console.warn('[Login] Failed to capture error analytics:', analyzerError);
+      }
     } finally {
       setLoading(false);
     }
