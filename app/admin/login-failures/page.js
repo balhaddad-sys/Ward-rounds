@@ -108,6 +108,12 @@ export default function LoginFailuresAnalyzer() {
               <p className="text-gray-600">
                 Post-hoc analysis of login fetch failures
               </p>
+              {typeof window !== 'undefined' && window.location.hostname.includes('github.io') && (
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-lg">
+                  <span>💾</span>
+                  <span>Client-side mode (data stored in browser)</span>
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               <button
