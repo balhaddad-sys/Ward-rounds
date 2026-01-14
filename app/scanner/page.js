@@ -1,21 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DocumentScanner } from '@/components/scanner/DocumentScanner';
+import { initPostHog, trackOCR, trackAI, trackError, trackUserAction } from '@/lib/analytics/posthog-client';
 
 export default function ScannerPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const router = useRouter();
 
+  // Initialize PostHog on mount
+  useEffect(() => {
+    initPostHog();
+    trackUserAction('page_view', { page: 'scanner' });
+  }, []);
+
   const handleCapture = async (file, method) => {
     setUploading(true);
     setUploadSuccess(false);
 
+    const startTime = Date.now();
+
     try {
       // Step 1: Extract text from document using OCR
       console.log('[Scanner] Starting OCR extraction...');
+      trackOCR('start', {
+        fileType: file.type,
+        fileSize: file.size,
+        method
+      });
 
       const documentType = file.type.includes('pdf') ? 'general' : 'lab';
       let ocrResult;
@@ -54,26 +68,65 @@ export default function ScannerPage() {
         ocrMethod = 'tesseract-js';
       }
 
+      const ocrTime = Date.now() - startTime;
       console.log(`[Scanner] OCR complete using ${ocrMethod}, confidence: ${ocrResult.confidence}`);
+
+      // Track OCR success
+      trackOCR('complete', {
+        method: ocrMethod,
+        confidence: ocrResult.confidence,
+        fileType: file.type,
+        fileSize: file.size,
+        textLength: (ocrResult.rawText || ocrResult.fullText || '').length,
+        processingTime: ocrTime
+      });
 
       // Check if OCR detected any text (check both possible field names)
       const extractedText = ocrResult.rawText || ocrResult.fullText || '';
       if (!extractedText || extractedText.trim().length === 0) {
-        throw new Error('No text detected in the image. Please ensure:\n• The image is clear and well-lit\n• The text is in focus\n• The document is properly aligned\n• There is sufficient contrast');
+        const noTextError = new Error('No text detected in the image. Please ensure:\n• The image is clear and well-lit\n• The text is in focus\n• The document is properly aligned\n• There is sufficient contrast');
+        trackOCR('failed', {
+          method: ocrMethod,
+          fileType: file.type,
+          fileSize: file.size,
+          error: noTextError.message,
+          processingTime: Date.now() - startTime
+        });
+        throw noTextError;
       }
 
       // Check confidence level
       if (ocrResult.confidence < 0.3) {
         console.warn('[Scanner] Low OCR confidence:', ocrResult.confidence);
+        trackOCR('low_confidence', {
+          method: ocrMethod,
+          confidence: ocrResult.confidence,
+          fileType: file.type
+        });
         alert('Warning: Low text detection confidence. The results may not be accurate. Consider retaking the image with better lighting.');
       }
 
       // Step 2: Interpret the document with AI
       console.log('[Scanner] Interpreting document...');
+      trackAI('start', {
+        documentType,
+        textLength: extractedText.length
+      });
+
+      const aiStartTime = Date.now();
       const { interpretDocument, generateClinicalPearls, generateTeachingQuestions } = await import('@/lib/ai/medicalInterpreter');
       const interpretation = await interpretDocument(ocrResult);
 
+      const aiTime = Date.now() - aiStartTime;
       console.log('[Scanner] Interpretation complete');
+
+      trackAI('complete', {
+        provider: interpretation.source,
+        documentType,
+        processingTime: aiTime,
+        findingsCount: interpretation.findings?.length || 0,
+        usedAI: interpretation.usedAI
+      });
 
       // Step 3: Generate clinical pearls
       console.log('[Scanner] Generating clinical pearls...');
@@ -158,6 +211,15 @@ export default function ScannerPage() {
     } catch (error) {
       console.error('[Scanner] Error:', error);
       console.error('[Scanner] Error stack:', error.stack);
+
+      // Track error with PostHog
+      trackError(error, {
+        page: 'scanner',
+        file_type: file?.type,
+        file_size: file?.size,
+        upload_method: method,
+        processing_time: Date.now() - startTime
+      });
 
       // Show user-friendly error message
       let errorMessage = error.message;
