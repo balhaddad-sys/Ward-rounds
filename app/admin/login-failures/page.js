@@ -1,547 +1,159 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  getStoredFailures,
-  clearStoredFailures,
-  analyzeFailurePatterns,
-  generateDiagnosticReport,
-  getFailureStatistics
-} from '@/lib/analytics/login-failure-analyzer';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { captureLoginFailure } from '@/lib/analytics/login-failure-analyzer';
 
-export default function LoginFailuresAnalyzer() {
-  const [failures, setFailures] = useState([]);
-  const [patterns, setPatterns] = useState(null);
-  const [statistics, setStatistics] = useState(null);
-  const [selectedFailure, setSelectedFailure] = useState(null);
-  const [diagnosticReport, setDiagnosticReport] = useState(null);
-  const [view, setView] = useState('overview'); // overview, list, diagnostic
+// Ensure this matches your DEPLOYED Web App URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbwWYEiLB0bdOfLt9bSizC9vLL0a-Zut52DqSjNgd6roAk7sdQ8cI0MzHsP2mk66JwK5/exec';
 
-  useEffect(() => {
-    loadData();
-  }, []);
+export default function LoginPage() {
+  const [username, setUsername] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  const loadData = () => {
-    const storedFailures = getStoredFailures();
-    setFailures(storedFailures);
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-    if (storedFailures.length > 0) {
-      setPatterns(analyzeFailurePatterns(storedFailures));
-      setStatistics(getFailureStatistics());
+    if (!username || username.trim().length === 0) {
+      setError('Please enter a username');
+      setLoading(false);
+      return;
     }
-  };
 
-  const handleClearFailures = () => {
-    if (confirm('Are you sure you want to clear all failure records?')) {
-      clearStoredFailures();
-      loadData();
+    const startTime = Date.now();
+    let response = null;
+
+    /**
+     * MASTER SHIFU: The "Secret Sauce" is here.
+     * We change Content-Type to 'text/plain'. 
+     * This makes it a "Simple Request" and bypasses the CORS Preflight block.
+     */
+    const requestOptions = {
+      method: 'POST',
+      mode: 'cors', // Explicitly allow CORS
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8' 
+      },
+      body: JSON.stringify({
+        action: 'login',
+        username: username.trim()
+      })
+    };
+
+    try {
+      console.log('[Login] Attempting login for:', username);
+
+      response = await fetch(API_URL, requestOptions);
+
+      // Google Apps Script usually returns 200 even for some errors, 
+      // but if the network fails, it will catch below.
+      if (!response.ok) {
+        throw new Error(`Network response was not ok (Status: ${response.status})`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Store token and user data
+      localStorage.setItem('medward_token', data.token);
+      localStorage.setItem('medward_user', JSON.stringify(data.user));
+
+      console.log('[Login] ✓ Success! Redirecting...');
+      router.push('/dashboard');
+
+    } catch (err) {
+      console.error('[Login] Error Details:', err);
+      
+      // Better error message for the student
+      let friendlyError = err.message;
+      if (err.message.includes('Failed to fetch')) {
+        friendlyError = 'Could not connect to the medical server. Please check your internet or script deployment.';
+      }
+      
+      setError(friendlyError);
+
+      try {
+        await captureLoginFailure({
+          error: err,
+          url: API_URL,
+          username: username.trim(),
+          timing: { duration: Date.now() - startTime }
+        });
+      } catch (analyticsErr) {
+        console.warn('Analytics failed:', analyticsErr);
+      }
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleViewDiagnostic = (failureId) => {
-    const report = generateDiagnosticReport(failureId);
-    setDiagnosticReport(report);
-    setSelectedFailure(failureId);
-    setView('diagnostic');
-  };
-
-  const getCategoryColor = (category) => {
-    const colors = {
-      NETWORK: 'bg-red-100 text-red-800 border-red-300',
-      CORS: 'bg-orange-100 text-orange-800 border-orange-300',
-      TIMEOUT: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      SERVER_ERROR: 'bg-purple-100 text-purple-800 border-purple-300',
-      RATE_LIMIT: 'bg-blue-100 text-blue-800 border-blue-300',
-      PARSE_ERROR: 'bg-pink-100 text-pink-800 border-pink-300',
-      VALIDATION: 'bg-gray-100 text-gray-800 border-gray-300',
-      UNKNOWN: 'bg-gray-100 text-gray-600 border-gray-300'
-    };
-    return colors[category] || colors.UNKNOWN;
-  };
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      HIGH: 'bg-red-600 text-white',
-      MEDIUM: 'bg-yellow-600 text-white',
-      LOW: 'bg-blue-600 text-white'
-    };
-    return colors[priority] || 'bg-gray-600 text-white';
-  };
-
-  const getSeverityColor = (severity) => {
-    const colors = {
-      HIGH: 'text-red-600',
-      MEDIUM: 'text-yellow-600',
-      LOW: 'text-blue-600',
-      UNKNOWN: 'text-gray-600'
-    };
-    return colors[severity] || colors.UNKNOWN;
-  };
-
-  const formatDuration = (ms) => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString();
-  };
-
-  const getHealthScoreColor = (score) => {
-    if (score >= 90) return 'text-green-600 bg-green-50';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-50';
-    if (score >= 50) return 'text-orange-600 bg-orange-50';
-    return 'text-red-600 bg-red-50';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                🔍 Login Failure Analyzer
-              </h1>
-              <p className="text-gray-600">
-                Post-hoc analysis of login fetch failures
-              </p>
-              {typeof window !== 'undefined' && window.location.hostname.includes('github.io') && (
-                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-lg">
-                  <span>💾</span>
-                  <span>Client-side mode (data stored in browser)</span>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={loadData}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                🔄 Refresh
-              </button>
-              <button
-                onClick={handleClearFailures}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                disabled={failures.length === 0}
-              >
-                🗑️ Clear All
-              </button>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-pink-400/20 to-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8">
+          <div className="w-24 h-24 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl transform hover:scale-110 transition-all duration-300">
+            <span className="text-5xl">🏥</span>
           </div>
+          <h1 className="text-3xl font-extrabold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">MedWard</h1>
+          <p className="text-gray-700 font-medium">Medical Report Interpreter</p>
         </div>
 
-        {/* View Tabs */}
-        <div className="mb-6 flex gap-2">
-          <button
-            onClick={() => setView('overview')}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-              view === 'overview'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            📊 Overview
-          </button>
-          <button
-            onClick={() => setView('list')}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-              view === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            📋 Failure List ({failures.length})
-          </button>
-          {diagnosticReport && (
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border-2 border-white/50">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+          <p className="text-gray-600 mb-8 text-sm">Sign in to begin your rounds</p>
+
+          <form onSubmit={handleLogin}>
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Username</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-xl">👤</span>
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all bg-white/50 text-gray-900"
+                  required
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border-2 border-red-100 text-red-700 rounded-xl text-sm flex items-center gap-2">
+                <span>⚠️</span> {error}
+              </div>
+            )}
+
             <button
-              onClick={() => setView('diagnostic')}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                view === 'diagnostic'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:shadow-xl transform active:scale-95 transition-all duration-200 disabled:opacity-50 shadow-lg"
             >
-              🩺 Diagnostic Report
+              {loading ? "Connecting..." : "Continue →"}
             </button>
-          )}
-        </div>
+          </form>
 
-        {/* No Failures */}
-        {failures.length === 0 && (
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-            <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              No Login Failures Recorded
-            </h2>
-            <p className="text-gray-600">
-              All login attempts have been successful, or no attempts have been made yet.
+          <div className="mt-8 pt-6 border-t border-gray-100">
+            <p className="text-center text-sm text-gray-500 italic">
+              "Healing is a matter of time, but it is sometimes also a matter of opportunity."
             </p>
           </div>
-        )}
-
-        {/* Overview */}
-        {failures.length > 0 && view === 'overview' && statistics && patterns && (
-          <div className="space-y-6">
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Total Failures</div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {statistics.summary.total}
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Last 24 Hours</div>
-                <div className="text-3xl font-bold text-orange-600">
-                  {statistics.summary.last24Hours}
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Last Hour</div>
-                <div className="text-3xl font-bold text-red-600">
-                  {statistics.summary.lastHour}
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Health Score</div>
-                <div
-                  className={`text-3xl font-bold ${
-                    getHealthScoreColor(statistics.healthScore).split(' ')[0]
-                  }`}
-                >
-                  {statistics.healthScore}/100
-                </div>
-              </div>
-            </div>
-
-            {/* Categories */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Failures by Category
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(patterns.byCategory).map(([category, count]) => (
-                  <div
-                    key={category}
-                    className={`px-4 py-3 rounded-lg border-2 ${getCategoryColor(
-                      category
-                    )}`}
-                  >
-                    <div className="text-sm font-medium">{category}</div>
-                    <div className="text-2xl font-bold">{count}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Top Errors */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Most Common Errors
-              </h2>
-              <div className="space-y-3">
-                {patterns.topErrors.map((error, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex-1 font-mono text-sm text-gray-800">
-                      {error.message}
-                    </div>
-                    <div className="ml-4 px-3 py-1 bg-red-600 text-white rounded-full text-sm font-bold">
-                      {error.count}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Timing Analysis */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Request Timing
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">
-                    Average Duration
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {formatDuration(patterns.timing.average)}
-                  </div>
-                </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">
-                    Max Duration
-                  </div>
-                  <div className="text-2xl font-bold text-purple-600">
-                    {formatDuration(patterns.timing.max)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recommendations */}
-            {patterns.recommendations.length > 0 && (
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  🎯 Recommendations
-                </h2>
-                <div className="space-y-3">
-                  {patterns.recommendations.map((rec, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${getPriorityColor(
-                            rec.priority
-                          )}`}
-                        >
-                          {rec.priority}
-                        </span>
-                        <div className="flex-1">
-                          <div className="font-bold text-gray-900 mb-1">
-                            {rec.issue}
-                          </div>
-                          <div className="text-sm text-gray-700">
-                            {rec.suggestion}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Failure List */}
-        {failures.length > 0 && view === 'list' && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Timestamp
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Error
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Network
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {[...failures].reverse().map((failure) => (
-                    <tr key={failure.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatTimestamp(failure.timestamp)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
-                            failure.category
-                          )}`}
-                        >
-                          {failure.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
-                        {failure.error.message}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatDuration(failure.timing.duration)}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {failure.network.online ? (
-                          <span className="text-green-600">🟢 Online</span>
-                        ) : (
-                          <span className="text-red-600">🔴 Offline</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleViewDiagnostic(failure.id)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                        >
-                          🩺 Diagnose
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Diagnostic Report */}
-        {view === 'diagnostic' && diagnosticReport && (
-          <div className="space-y-6">
-            {/* Failure Details */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Failure Details
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Timestamp</div>
-                  <div className="font-medium">
-                    {formatTimestamp(diagnosticReport.failure.timestamp)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Category</div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium border inline-block ${getCategoryColor(
-                      diagnosticReport.failure.category
-                    )}`}
-                  >
-                    {diagnosticReport.failure.category}
-                  </span>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Duration</div>
-                  <div className="font-medium">
-                    {formatDuration(diagnosticReport.failure.timing.duration)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Username</div>
-                  <div className="font-medium">
-                    {diagnosticReport.failure.user.username || 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Diagnosis */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                🩺 Diagnosis
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Severity</div>
-                  <div
-                    className={`text-2xl font-bold ${getSeverityColor(
-                      diagnosticReport.diagnosis.severity
-                    )}`}
-                  >
-                    {diagnosticReport.diagnosis.severity}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Root Cause</div>
-                  <div className="text-lg font-medium text-gray-900">
-                    {diagnosticReport.diagnosis.rootCause}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600 mb-2">
-                    Technical Details
-                  </div>
-                  <ul className="space-y-2">
-                    {diagnosticReport.diagnosis.technicalDetails.map(
-                      (detail, idx) => (
-                        <li
-                          key={idx}
-                          className="flex items-start gap-2 text-sm text-gray-700"
-                        >
-                          <span className="text-blue-600 mt-1">▪</span>
-                          <span>{detail}</span>
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Context */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Context</h2>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">
-                    Total Failures
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {diagnosticReport.context.totalFailures}
-                  </div>
-                </div>
-                <div className="p-4 bg-orange-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">
-                    Similar Failures
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600">
-                    {diagnosticReport.context.similarFailures}
-                  </div>
-                </div>
-                <div className="p-4 bg-red-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">
-                    Recent (1hr)
-                  </div>
-                  <div className="text-2xl font-bold text-red-600">
-                    {diagnosticReport.context.recentFailures}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Suggested Fixes */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                🔧 Suggested Fixes
-              </h2>
-              <div className="space-y-6">
-                {diagnosticReport.suggestedFixes.map((fix, idx) => (
-                  <div key={idx} className="border rounded-lg p-4">
-                    <div className="font-bold text-gray-900 mb-3">
-                      {idx + 1}. {fix.fix}
-                    </div>
-                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-                      <pre className="text-sm">
-                        <code>{fix.code.trim()}</code>
-                      </pre>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Error Stack */}
-            {diagnosticReport.failure.error.stack && (
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  Stack Trace
-                </h2>
-                <div className="bg-red-50 p-4 rounded-lg overflow-x-auto">
-                  <pre className="text-xs text-red-800 font-mono">
-                    {diagnosticReport.failure.error.stack}
-                  </pre>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
