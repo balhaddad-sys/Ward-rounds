@@ -321,6 +321,13 @@ function doPost(e) {
           timestamp: new Date().toISOString()
         }));
 
+      case 'login':
+        // User login/registration
+        Logger.log('Login request for: ' + requestData.username);
+        const loginResult = loginUser(requestData.username);
+
+        return output.setContent(JSON.stringify(loginResult));
+
       case 'interpret':
         // Interpret medical document using OpenAI
         const text = requestData.text;

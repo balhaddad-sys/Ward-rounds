@@ -16,47 +16,55 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    if (!username || username.trim().length === 0) {
+      setError('Please enter a username');
+      setLoading(false);
+      return;
+    }
+
     try {
-      let data;
+      console.log('[Login] Attempting login for:', username);
 
-      // Try local API first
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ username })
-        });
+      // Use Google Apps Script backend with POST + JSON
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'login',
+          username: username.trim()
+        })
+      });
 
-        if (response.ok) {
-          data = await response.json();
-          console.log('[Login] ✓ Logged in via local API');
-        } else {
-          throw new Error('Local API failed');
-        }
-      } catch (localError) {
-        console.warn('[Login] Local API failed, trying Google Apps Script fallback...');
+      console.log('[Login] Response status:', response.status);
 
-        // Fallback to Google Apps Script
-        const url = `${API_URL}?action=login&username=${encodeURIComponent(username)}`;
-        const response = await fetch(url);
-        data = await response.json();
-        console.log('[Login] ✓ Logged in via Google Apps Script');
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      console.log('[Login] Response data:', { success: data.success, hasToken: !!data.token, hasUser: !!data.user });
 
       if (!data.success) {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store token
+      if (!data.token || !data.user) {
+        throw new Error('Invalid response from server (missing token or user data)');
+      }
+
+      // Store token and user data
       localStorage.setItem('medward_token', data.token);
       localStorage.setItem('medward_user', JSON.stringify(data.user));
+
+      console.log('[Login] ✓ Login successful, redirecting to dashboard...');
 
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message);
+      console.error('[Login] Error:', err);
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
