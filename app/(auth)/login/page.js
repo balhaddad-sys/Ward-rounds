@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { captureLoginFailure } from '@/lib/analytics/login-failure-analyzer';
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwWYEiLB0bdOfLt9bSizC9vLL0a-Zut52DqSjNgd6roAk7sdQ8cI0MzHsP2mk66JwK5/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxJfUS-CHHi3I9zq5f2WTtaK4s0fqNRM3_FZejsoGDwKL9I4fqdn_P-RKZFIsvw-8PiqA/exec';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
