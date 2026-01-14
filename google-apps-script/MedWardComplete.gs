@@ -91,6 +91,15 @@ function doPost(e) {
       case 'interpret':
         return handleInterpret(requestData);
 
+      case 'interpretImage':
+      case 'testImageInterpret':
+        // Image interpretation with Vision AI (requires VisionAI.gs file)
+        return handleImageInterpret(requestData);
+
+      case 'processDocument':
+        // Complete document processing (OCR + Interpretation)
+        return handleProcessDocument(requestData);
+
       default:
         return createErrorResponse('Unknown action: ' + action);
     }
@@ -220,6 +229,41 @@ function handleInterpret(data) {
     Logger.log('[Interpret] Error: ' + error);
     Logger.log('[Interpret] Stack: ' + error.stack);
     return createErrorResponse('Interpretation failed: ' + error.message);
+  }
+}
+
+/**
+ * Handle complete document processing (OCR + AI Interpretation)
+ * This function processes image data using Vision AI, then interprets with OpenAI
+ */
+function handleProcessDocument(requestData) {
+  try {
+    Logger.log('[ProcessDocument] Starting document processing...');
+
+    const imageData = requestData.imageData || requestData.fileData;
+    const documentType = requestData.documentType || 'general';
+    const fileName = requestData.fileName || 'document.jpg';
+
+    if (!imageData) {
+      return createErrorResponse('No image data provided. Please include imageData or fileData in the request.');
+    }
+
+    Logger.log('[ProcessDocument] File: ' + fileName);
+    Logger.log('[ProcessDocument] Document type: ' + documentType);
+    Logger.log('[ProcessDocument] Image data length: ' + imageData.length);
+
+    // Check if VisionAI.gs is available (it should be in the same project)
+    if (typeof handleImageInterpret !== 'function') {
+      return createErrorResponse('Vision AI integration not available. Please add VisionAI.gs to your Apps Script project.');
+    }
+
+    // Use the handleImageInterpret function from VisionAI.gs
+    return handleImageInterpret(requestData);
+
+  } catch (error) {
+    Logger.log('[ProcessDocument] Error: ' + error.toString());
+    Logger.log('[ProcessDocument] Stack: ' + (error.stack || 'No stack trace'));
+    return createErrorResponse('Document processing failed: ' + error.toString());
   }
 }
 
