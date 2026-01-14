@@ -23,6 +23,17 @@ export default function ScannerPage() {
 
       console.log('[Scanner] OCR complete, confidence:', ocrResult.confidence);
 
+      // Check if OCR detected any text
+      if (!ocrResult.rawText || ocrResult.rawText.trim().length === 0) {
+        throw new Error('No text detected in the image. Please ensure:\n• The image is clear and well-lit\n• The text is in focus\n• The document is properly aligned\n• There is sufficient contrast');
+      }
+
+      // Check confidence level
+      if (ocrResult.confidence < 0.3) {
+        console.warn('[Scanner] Low OCR confidence:', ocrResult.confidence);
+        alert('Warning: Low text detection confidence. The results may not be accurate. Consider retaking the image with better lighting.');
+      }
+
       // Step 2: Interpret the document with AI
       console.log('[Scanner] Interpreting document...');
       const { interpretDocument, generateClinicalPearls, generateTeachingQuestions } = await import('@/lib/ai/medicalInterpreter');
@@ -111,7 +122,17 @@ export default function ScannerPage() {
       }, 2000);
     } catch (error) {
       console.error('[Scanner] Error:', error);
-      alert(`Failed to process report: ${error.message}`);
+      console.error('[Scanner] Error stack:', error.stack);
+
+      // Show user-friendly error message
+      let errorMessage = error.message;
+
+      // Add helpful tips based on error type
+      if (errorMessage.includes('No text detected') || errorMessage.includes('extract text')) {
+        errorMessage += '\n\nTips for better results:\n• Use good lighting\n• Hold camera steady\n• Ensure text is in focus\n• Try uploading a file instead';
+      }
+
+      alert(`Failed to process report:\n\n${errorMessage}`);
     } finally {
       setUploading(false);
     }
@@ -167,11 +188,14 @@ export default function ScannerPage() {
           <div className="flex gap-3">
             <span className="text-xl">💡</span>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-1">Supported Formats</h4>
-              <p className="text-sm text-gray-600">
-                You can upload lab results, imaging reports, discharge summaries, and other medical documents.
-                Supported formats: JPG, PNG, PDF (up to 10MB)
-              </p>
+              <h4 className="font-semibold text-gray-900 mb-1">Tips for Best Results</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Use good lighting and avoid shadows</li>
+                <li>• Ensure text is clear and in focus</li>
+                <li>• Align the document properly in the frame</li>
+                <li>• Supported: Lab results, imaging reports, clinical notes</li>
+                <li>• Formats: JPG, PNG, PDF (up to 10MB)</li>
+              </ul>
             </div>
           </div>
         </div>
