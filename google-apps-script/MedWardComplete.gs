@@ -91,6 +91,9 @@ function doPost(e) {
       case 'interpret':
         return handleInterpret(requestData);
 
+      case 'processDocument':
+        return handleProcessDocument(requestData);
+
       default:
         return createErrorResponse('Unknown action: ' + action);
     }
@@ -220,6 +223,78 @@ function handleInterpret(data) {
     Logger.log('[Interpret] Error: ' + error);
     Logger.log('[Interpret] Stack: ' + error.stack);
     return createErrorResponse('Interpretation failed: ' + error.message);
+  }
+}
+
+/**
+ * Handle process document - OCR with Vision AI + Medical Interpretation
+ */
+function handleProcessDocument(data) {
+  try {
+    const fileData = data.fileData;
+    const documentType = data.documentType || 'lab';
+    const fileName = data.fileName || 'document';
+    const fileType = data.fileType || 'image/jpeg';
+
+    if (!fileData || fileData.length === 0) {
+      return createErrorResponse('No file data provided');
+    }
+
+    Logger.log('[ProcessDocument] Processing: ' + fileName);
+    Logger.log('[ProcessDocument] Type: ' + documentType);
+    Logger.log('[ProcessDocument] File size (base64): ' + fileData.length + ' chars');
+
+    // Step 1: Extract text using Vision AI
+    Logger.log('[ProcessDocument] Step 1: Extracting text with Vision AI...');
+    const extractedText = extractTextWithVisionAI(fileData);
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      return createErrorResponse('No text detected in image. Please ensure the image is clear and contains readable text.');
+    }
+
+    Logger.log('[ProcessDocument] Text extracted: ' + extractedText.length + ' chars');
+
+    // Step 2: Interpret with OpenAI
+    Logger.log('[ProcessDocument] Step 2: Interpreting with AI...');
+    const interpretation = interpretMedicalText(extractedText, documentType);
+
+    // Step 3: Generate Clinical Pearls
+    Logger.log('[ProcessDocument] Step 3: Generating clinical pearls...');
+    const clinicalPearls = generateClinicalPearls(interpretation, documentType);
+
+    // Step 4: Generate Teaching Questions
+    Logger.log('[ProcessDocument] Step 4: Generating teaching questions...');
+    const potentialQuestions = generateTeachingQuestions(interpretation, documentType);
+
+    // Step 5: Generate Presentation
+    Logger.log('[ProcessDocument] Step 5: Generating presentation...');
+    const presentation = generatePresentation(interpretation, documentType);
+
+    Logger.log('[ProcessDocument] Complete!');
+
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        reportId: Utilities.getUuid(),
+        extractedText: extractedText,
+        ocrConfidence: 0.9,
+        interpretation: interpretation,
+        clinicalPearls: clinicalPearls,
+        potentialQuestions: potentialQuestions,
+        presentation: presentation,
+        metadata: {
+          processedAt: new Date().toISOString(),
+          documentType: documentType,
+          fileName: fileName,
+          textLength: extractedText.length
+        }
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('[ProcessDocument] Error: ' + error);
+    Logger.log('[ProcessDocument] Stack: ' + error.stack);
+    return createErrorResponse('Document processing failed: ' + error.message);
   }
 }
 
@@ -475,6 +550,162 @@ function createErrorResponse(message) {
       timestamp: new Date().toISOString()
     }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Extract text from image using Vision AI (Google Cloud Vision or OpenAI GPT-4 Vision)
+ */
+function extractTextWithVisionAI(base64ImageData) {
+  try {
+    // Sanitize base64 data - remove any data URL prefix
+    let cleanBase64 = base64ImageData;
+    if (base64ImageData.indexOf('base64,') > -1) {
+      cleanBase64 = base64ImageData.split('base64,')[1];
+    }
+
+    // Remove any whitespace or newlines
+    cleanBase64 = cleanBase64.replace(/\s/g, '');
+
+    Logger.log('[VisionAI] Processing image, base64 length: ' + cleanBase64.length);
+
+    // Try Google Cloud Vision first (if API key is available)
+    const visionApiKey = PropertiesService.getScriptProperties().getProperty('GOOGLE_VISION_API_KEY');
+
+    if (visionApiKey && visionApiKey.length > 10) {
+      Logger.log('[VisionAI] Using Google Cloud Vision API');
+      return extractTextWithGoogleVision(cleanBase64, visionApiKey);
+    } else {
+      // Fallback to OpenAI GPT-4 Vision
+      Logger.log('[VisionAI] Using OpenAI GPT-4 Vision');
+      return extractTextWithOpenAIVision(cleanBase64);
+    }
+
+  } catch (error) {
+    Logger.log('[VisionAI] Error: ' + error);
+    throw new Error('Vision AI extraction failed: ' + error.message);
+  }
+}
+
+/**
+ * Extract text using Google Cloud Vision API
+ */
+function extractTextWithGoogleVision(base64Image, apiKey) {
+  try {
+    const url = 'https://vision.googleapis.com/v1/images:annotate?key=' + apiKey;
+
+    const payload = {
+      requests: [{
+        image: {
+          content: base64Image
+        },
+        features: [{
+          type: 'DOCUMENT_TEXT_DETECTION',
+          maxResults: 1
+        }]
+      }]
+    };
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const result = JSON.parse(response.getContentText());
+
+    if (response.getResponseCode() !== 200) {
+      throw new Error('Google Vision API error: ' + (result.error?.message || 'Unknown error'));
+    }
+
+    if (result.responses && result.responses[0].fullTextAnnotation) {
+      return result.responses[0].fullTextAnnotation.text;
+    } else if (result.responses && result.responses[0].error) {
+      throw new Error('Vision API error: ' + result.responses[0].error.message);
+    } else {
+      throw new Error('No text detected in image');
+    }
+
+  } catch (error) {
+    Logger.log('[GoogleVision] Error: ' + error);
+    throw error;
+  }
+}
+
+/**
+ * Extract text using OpenAI GPT-4 Vision (fallback)
+ */
+function extractTextWithOpenAIVision(base64Image) {
+  try {
+    const apiKey = CONFIG.OPENAI_API_KEY;
+    if (!apiKey || apiKey === 'your-api-key-here') {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const url = 'https://api.openai.com/v1/chat/completions';
+
+    const payload = {
+      model: 'gpt-4-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an OCR system. Extract ALL text from the image exactly as written. Preserve formatting, line breaks, and structure. Only return the extracted text, no explanations.'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Extract all text from this medical document image. Return ONLY the extracted text, exactly as shown in the image.'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: 'data:image/jpeg;base64,' + base64Image,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 4000,
+      temperature: 0.1
+    };
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+
+    Logger.log('[OpenAIVision] Response code: ' + responseCode);
+
+    if (responseCode !== 200) {
+      const errorText = response.getContentText();
+      Logger.log('[OpenAIVision] Error response: ' + errorText);
+      throw new Error('OpenAI Vision API error (' + responseCode + '): ' + errorText);
+    }
+
+    const result = JSON.parse(response.getContentText());
+
+    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+      throw new Error('Invalid OpenAI Vision response format');
+    }
+
+    return result.choices[0].message.content;
+
+  } catch (error) {
+    Logger.log('[OpenAIVision] Error: ' + error);
+    throw error;
+  }
 }
 
 /**
