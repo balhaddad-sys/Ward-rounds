@@ -14,95 +14,53 @@ export default function ScannerPage() {
     setUploadSuccess(false);
 
     try {
-      // Step 1: Extract text from document using OCR
-      console.log('[Scanner] Starting OCR extraction...');
-      const { processDocument } = await import('@/lib/ocr/textExtractor');
+      console.log('[Scanner] Uploading document to API...');
 
-      const documentType = file.type.includes('pdf') ? 'general' : 'lab';
-      const ocrResult = await processDocument(file, documentType);
-
-      console.log('[Scanner] OCR complete, confidence:', ocrResult.confidence);
-
-      // Check if OCR detected any text
-      if (!ocrResult.rawText || ocrResult.rawText.trim().length === 0) {
-        throw new Error('No text detected in the image. Please ensure:\n• The image is clear and well-lit\n• The text is in focus\n• The document is properly aligned\n• There is sufficient contrast');
+      // Get auth token
+      const token = localStorage.getItem('medward_token');
+      if (!token) {
+        throw new Error('Not authenticated. Please log in first.');
       }
 
-      // Check confidence level
-      if (ocrResult.confidence < 0.3) {
-        console.warn('[Scanner] Low OCR confidence:', ocrResult.confidence);
-        alert('Warning: Low text detection confidence. The results may not be accurate. Consider retaking the image with better lighting.');
+      // Determine report type from file type or let user select
+      const reportType = file.type.includes('pdf') ? 'general' : 'lab';
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('reportType', reportType);
+
+      // Optional: Add patient ID if available
+      const currentPatientId = sessionStorage.getItem('currentPatientId');
+      if (currentPatientId) {
+        formData.append('patientId', currentPatientId);
       }
 
-      // Step 2: Interpret the document with AI
-      console.log('[Scanner] Interpreting document...');
-      const { interpretDocument, generateClinicalPearls, generateTeachingQuestions } = await import('@/lib/ai/medicalInterpreter');
-      const interpretation = await interpretDocument(ocrResult);
+      // Upload to API
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
 
-      console.log('[Scanner] Interpretation complete');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
 
-      // Step 3: Generate clinical pearls
-      console.log('[Scanner] Generating clinical pearls...');
-      const clinicalPearls = await generateClinicalPearls(interpretation, documentType);
+      const data = await response.json();
+      console.log('[Scanner] Upload complete:', data);
 
-      // Step 4: Generate teaching questions
-      console.log('[Scanner] Generating teaching questions...');
-      const potentialQuestions = await generateTeachingQuestions(interpretation, documentType);
-
-      // Step 5: Generate ward presentation
-      console.log('[Scanner] Generating presentation...');
-      const { generatePresentation } = await import('@/lib/presentation/generator');
-
-      const patientInfo = {
-        age: 'XX',
-        gender: 'unknown',
-        chiefComplaint: 'presenting'
-      };
-
-      // Create complete report structure for presentation generator
-      const reportForPresentation = {
-        type: documentType,
-        interpretation: interpretation,
-        clinicalPearls: clinicalPearls,
-        potentialQuestions: potentialQuestions,
-        extractedText: ocrResult.rawText,
-        ocrConfidence: ocrResult.confidence
-      };
-
-      const presentationData = generatePresentation(reportForPresentation, patientInfo);
-
-      console.log('[Scanner] Presentation generated');
-
-      // Step 6: Save complete report to localStorage
+      // Also save to localStorage for offline access
       const existingReports = JSON.parse(localStorage.getItem('medward_reports') || '[]');
-
       const newReport = {
-        id: Date.now(),
-        type: documentType,
-        title: file.name,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        uploadMethod: method,
-        date: new Date().toISOString(),
-        status: 'analyzed',
-        patientName: 'New Patient',
-        patientMrn: 'TBD',
-        // Add OCR results
-        extractedText: ocrResult.rawText,
-        ocrConfidence: ocrResult.confidence,
-        // Add AI interpretation
-        interpretation: interpretation,
-        // Add presentation
-        presentation: presentationData.presentation,
-        clinicalPearls: presentationData.clinicalPearls,
-        potentialQuestions: presentationData.potentialQuestions
+        ...data.report,
+        uploadMethod: method
       };
-
       existingReports.unshift(newReport);
       localStorage.setItem('medward_reports', JSON.stringify(existingReports));
-
-      console.log('[Scanner] Report saved to localStorage');
 
       // Optional: Save to Google Sheets (async, don't wait)
       try {
@@ -118,7 +76,7 @@ export default function ScannerPage() {
 
       // Redirect to report detail page after 2 seconds
       setTimeout(() => {
-        window.location.href = `/Ward-rounds/reports/view/?id=${newReport.id}`;
+        window.location.href = `/Ward-rounds/reports/view/?id=${data.report.id}`;
       }, 2000);
     } catch (error) {
       console.error('[Scanner] Error:', error);

@@ -17,10 +17,33 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Use GET request with URL parameters (works better with Apps Script CORS)
-      const url = `${API_URL}?action=login&username=${encodeURIComponent(username)}`;
-      const response = await fetch(url);
-      const data = await response.json();
+      let data;
+
+      // Try local API first
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username })
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          console.log('[Login] ✓ Logged in via local API');
+        } else {
+          throw new Error('Local API failed');
+        }
+      } catch (localError) {
+        console.warn('[Login] Local API failed, trying Google Apps Script fallback...');
+
+        // Fallback to Google Apps Script
+        const url = `${API_URL}?action=login&username=${encodeURIComponent(username)}`;
+        const response = await fetch(url);
+        data = await response.json();
+        console.log('[Login] ✓ Logged in via Google Apps Script');
+      }
 
       if (!data.success) {
         throw new Error(data.error || 'Login failed');

@@ -133,12 +133,13 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
-  output: 'export',
-  distDir: 'docs',
+  // Changed from 'export' to 'standalone' to support API routes
+  output: 'standalone',
+  // distDir: 'docs', // Not needed for standalone
   reactStrictMode: true,
   swcMinify: true,
-  basePath: '/Ward-rounds',
-  assetPrefix: '/Ward-rounds/',
+  // basePath: '/Ward-rounds', // Disabled for local development
+  // assetPrefix: '/Ward-rounds/', // Disabled for local development
   trailingSlash: true,
 
   experimental: {
