@@ -185,6 +185,27 @@ const nextConfig = {
       });
     }
 
+    // Exclude pptxgenjs from server-side bundle (it has node: imports that don't work in browser)
+    config.externals = [...(config.externals || []), {
+      'pptxgenjs': 'pptxgenjs'
+    }];
+
+    // Fallback for node modules in client-side bundle
+    config.resolve = config.resolve || {};
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+      crypto: false,
+      stream: false,
+      http: false,
+      https: false,
+      zlib: false,
+      path: false,
+      os: false
+    };
+
     return config;
   }
 };

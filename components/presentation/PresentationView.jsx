@@ -1,15 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { ExportModal } from '@/components/modals/ExportModal';
+import { ShareModal } from '@/components/modals/ShareModal';
 
 /**
  * Presentation View Component
  * Displays ward presentation in SOAP format with pearls and questions
  */
-export function PresentationView({ presentation, pearls, questions }) {
+export function PresentationView({ presentation, pearls, questions, report }) {
   const [activeTab, setActiveTab] = useState('presentation');
   const [expandedSection, setExpandedSection] = useState('oneliner');
   const [revealedAnswers, setRevealedAnswers] = useState({});
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const tabs = [
     { id: 'presentation', label: 'Presentation', icon: '📋' },
@@ -127,13 +131,34 @@ export function PresentationView({ presentation, pearls, questions }) {
 
       {/* Action buttons */}
       <div className="flex gap-3 p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
-        <button className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-lg">
+        <button
+          onClick={() => setShowShareModal(true)}
+          className="flex-1 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors shadow-lg"
+        >
           📤 Share
         </button>
-        <button className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+        >
           📥 Export
         </button>
       </div>
+
+      {/* Modals */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        presentation={{ ...presentation, pearls, questions }}
+        reportName={`ward-presentation-${new Date().toISOString().split('T')[0]}`}
+      />
+
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        presentation={{ ...presentation, pearls, questions }}
+        report={report}
+      />
     </div>
   );
 }
