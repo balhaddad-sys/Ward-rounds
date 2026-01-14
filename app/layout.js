@@ -1,5 +1,8 @@
 // import { Inter } from 'next/font/google';
 import './globals.css';
+import { PostHogProvider } from '@/components/analytics/PostHogProvider';
+import { ErrorBoundary } from '@/components/analytics/ErrorBoundary';
+import { PostHogDebugPanel } from '@/components/analytics/PostHogDebugPanel';
 
 // const inter = Inter({ subsets: ['latin'] });
 
@@ -31,7 +34,12 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="font-sans">
-        {children}
+        <ErrorBoundary>
+          <PostHogProvider>
+            {children}
+            <PostHogDebugPanel />
+          </PostHogProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
