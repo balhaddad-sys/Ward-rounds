@@ -29,20 +29,6 @@ export default function ScannerPage() {
       // Determine report type from file type or let user select
       const reportType = file.type.includes('pdf') ? 'general' : 'lab';
 
-      // Create form data
-      const formData = new FormData();
-      formData.append('document', file);
-      formData.append('reportType', reportType);
-
-      // Optional: Add patient ID if available
-      const currentPatientId = sessionStorage.getItem('currentPatientId');
-      if (currentPatientId) {
-        formData.append('patientId', currentPatientId);
-      }
-
-      // Upload to API
-      setProcessingStep('Uploading document...');
-      console.log('[Scanner] Sending request to /api/documents/upload');
       console.log('[Scanner] File details:', {
         name: file.name,
         type: file.type,
@@ -50,26 +36,16 @@ export default function ScannerPage() {
         reportType
       });
 
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
+      // Auto-detect: Use local API (dev) or Google Script (production)
+      setProcessingStep('Processing document...');
+      console.log('[Scanner] Using auto-detect processing flow...');
 
-      console.log('[Scanner] Response status:', response.status);
-      setProcessingStep('Processing response...');
+      const { processDocumentAuto } = await import('@/lib/services/completeGoogleScriptFlow');
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-        console.error('[Scanner] API error:', error);
-        throw new Error(error.error || error.details || `Upload failed with status ${response.status}`);
-      }
+      setProcessingStep('OCR and AI analysis in progress...');
+      const data = await processDocumentAuto(file, reportType);
 
-      setProcessingStep('Analyzing results...');
-      const data = await response.json();
-      console.log('[Scanner] Upload complete. Response:', {
+      console.log('[Scanner] Processing complete. Response:', {
         success: data.success,
         hasReport: !!data.report,
         reportId: data.report?.id,
