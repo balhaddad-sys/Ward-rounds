@@ -33,21 +33,24 @@ const CONFIG = {
  * Handle GET requests - Shows API info
  */
 function doGet(e) {
-  return ContentService
-    .createTextOutput(JSON.stringify({
-      status: 'MedWard Backend API',
-      version: '2.0.0',
-      timestamp: new Date().toISOString(),
-      endpoints: {
-        login: 'POST with action=login, username',
-        interpret: 'POST with action=interpret, text, documentType',
-        ping: 'POST with action=ping'
-      },
-      setup: {
-        apiKeyConfigured: !!CONFIG.OPENAI_API_KEY && CONFIG.OPENAI_API_KEY !== 'your-api-key-here'
-      }
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+  const output = ContentService.createTextOutput(JSON.stringify({
+    status: 'MedWard Backend API',
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      login: 'POST with action=login, username',
+      interpret: 'POST with action=interpret, text, documentType',
+      ping: 'POST with action=ping'
+    },
+    setup: {
+      apiKeyConfigured: !!CONFIG.OPENAI_API_KEY && CONFIG.OPENAI_API_KEY !== 'your-api-key-here'
+    }
+  }));
+
+  output.setMimeType(ContentService.MimeType.JSON);
+
+  // Add CORS headers
+  return output;
 }
 
 /**
@@ -56,11 +59,19 @@ function doGet(e) {
 function doPost(e) {
   try {
     Logger.log('[MedWard] Received POST request');
+    Logger.log('[MedWard] Headers: ' + JSON.stringify(e.parameter));
 
     // Parse request
     let requestData;
     try {
-      requestData = JSON.parse(e.postData.contents);
+      if (e.postData && e.postData.contents) {
+        requestData = JSON.parse(e.postData.contents);
+      } else if (e.parameter) {
+        // Fallback to URL parameters
+        requestData = e.parameter;
+      } else {
+        throw new Error('No data provided');
+      }
     } catch (parseError) {
       Logger.log('[MedWard] JSON parse error: ' + parseError);
       return createErrorResponse('Invalid JSON payload: ' + parseError.message);
