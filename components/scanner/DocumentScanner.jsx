@@ -41,7 +41,8 @@ export function DocumentScanner({ onCapture }) {
       const blob = await response.blob();
       const file = new File([blob], `scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-      onCapture(file, 'camera');
+      // Pass as array for consistency with upload handler
+      onCapture([file], 'camera');
     } catch (error) {
       console.error('Capture error:', error);
       alert('Failed to capture photo. Please try again.');
@@ -51,8 +52,9 @@ export function DocumentScanner({ onCapture }) {
   }, [onCapture]);
 
   const onDrop = useCallback((acceptedFiles) => {
-    if (acceptedFiles[0]) {
-      onCapture(acceptedFiles[0], 'upload');
+    if (acceptedFiles.length > 0) {
+      // Pass all accepted files to parent
+      onCapture(acceptedFiles, 'upload');
     }
   }, [onCapture]);
 
@@ -62,8 +64,8 @@ export function DocumentScanner({ onCapture }) {
       'image/*': ['.jpeg', '.jpg', '.png'],
       'application/pdf': ['.pdf']
     },
-    maxFiles: 1,
-    multiple: false
+    maxFiles: 10, // Allow up to 10 files
+    multiple: true // Enable multiple file selection
   });
 
   return (
@@ -192,7 +194,8 @@ export function DocumentScanner({ onCapture }) {
             ) : (
               <>
                 Tap to select or drag and drop<br />
-                Supports: JPG, PNG, PDF (up to 10MB)
+                <strong className="text-blue-400">Multiple files supported!</strong><br />
+                Supports: JPG, PNG, PDF (up to 10 files, 10MB each)
               </>
             )}
           </p>
