@@ -16,15 +16,49 @@ export default function ScannerPage() {
     try {
       // Step 1: Extract text from document using OCR
       console.log('[Scanner] Starting OCR extraction...');
-      const { processDocument } = await import('@/lib/ocr/textExtractor');
 
       const documentType = file.type.includes('pdf') ? 'general' : 'lab';
-      const ocrResult = await processDocument(file, documentType);
+      let ocrResult;
+      let ocrMethod = 'unknown';
 
-      console.log('[Scanner] OCR complete, confidence:', ocrResult.confidence);
+      // Try server-side Google Cloud Vision API first (better accuracy)
+      try {
+        console.log('[Scanner] Attempting server-side OCR with Google Cloud Vision...');
 
-      // Check if OCR detected any text
-      if (!ocrResult.rawText || ocrResult.rawText.trim().length === 0) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('documentType', documentType);
+
+        const response = await fetch('/api/ocr', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          console.log('[Scanner] ✓ Using Google Cloud Vision API');
+          ocrResult = result.ocrResult;
+          ocrMethod = 'google-cloud-vision';
+        } else if (result.fallbackToClientSide) {
+          console.log('[Scanner] ⚠ Server-side OCR not available, falling back to client-side Tesseract.js');
+          throw new Error('Fallback to client-side');
+        } else {
+          throw new Error(result.error || 'Server-side OCR failed');
+        }
+      } catch (serverError) {
+        // Fallback to client-side Tesseract.js
+        console.log('[Scanner] Using client-side Tesseract.js OCR...');
+        const { processDocument } = await import('@/lib/ocr/textExtractor');
+        ocrResult = await processDocument(file, documentType);
+        ocrMethod = 'tesseract-js';
+      }
+
+      console.log(`[Scanner] OCR complete using ${ocrMethod}, confidence: ${ocrResult.confidence}`);
+
+      // Check if OCR detected any text (check both possible field names)
+      const extractedText = ocrResult.rawText || ocrResult.fullText || '';
+      if (!extractedText || extractedText.trim().length === 0) {
         throw new Error('No text detected in the image. Please ensure:\n• The image is clear and well-lit\n• The text is in focus\n• The document is properly aligned\n• There is sufficient contrast');
       }
 
@@ -89,8 +123,9 @@ export default function ScannerPage() {
         patientName: 'New Patient',
         patientMrn: 'TBD',
         // Add OCR results
-        extractedText: ocrResult.rawText,
+        extractedText: ocrResult.rawText || ocrResult.fullText,
         ocrConfidence: ocrResult.confidence,
+        ocrMethod: ocrMethod, // Track which OCR method was used
         // Add AI interpretation
         interpretation: interpretation,
         // Add presentation
